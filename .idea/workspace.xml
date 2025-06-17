@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="1d6e9b10-9a4d-4b68-81c6-08e4d53df08d" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/artifacts/client_jar.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/artifacts/server_jar.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/main/java/com/vehicleClient/Client.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/main/java/com/vehicleClient/application/ClientApp.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/main/messages_ca.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/main/messages_cs.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/main/messages_en_ZA.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/main/messages_ru.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/ServerMain.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/ClearCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/Command.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/ExecuteFileCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/ExitCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/HelpCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/HistoryCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/InfoCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/InsertCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/PassCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/RemoveByPower.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/RemoveGreaterKey.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/RemoveKeyCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/ReplaceIfLowerCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/ShowByPower.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/ShowCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/SumOfPower.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/commands/UpdateCommand.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/managers/CommandManager.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/managers/FileManager.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/serverNetwork/Server.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/server/src/main/resources/logback.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/managers/CollectionManager.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/managers/DbManager.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/managers/InputValidator.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/Coordinates.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/FuelType.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/Vehicle.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/VehicleType.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/VehicleWrapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/network/Request.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/network/Response.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/shared/src/main/resources/META-INF/MANIFEST.MF" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Dani4ka247&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Dani4ka247/Lab_7&quot;,
+    &quot;accountId&quot;: &quot;ecfab24a-8bf0-4e01-906b-832e23902161&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="2yW1xnFw4LcpwyxSfgk5mqUn33s" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.ClientApp.executor": "Run",
+    "Application.ClientMain.executor": "Run",
+    "Application.HelloFX.executor": "Run",
+    "JAR Application.client-1.0-SNAPSHOT.jar.executor": "Run",
+    "JAR Application.original-client-1.0-SNAPSHOT.jar.executor": "Run",
+    "Maven.Unknown [install].executor": "Run",
+    "Maven.Unknown [site].executor": "Run",
+    "Maven.client [clean].executor": "Run",
+    "Maven.client [compile].executor": "Run",
+    "Maven.client [install].executor": "Run",
+    "Maven.client [site].executor": "Run",
+    "Maven.client [validate].executor": "Run",
+    "Maven.hellofx [install].executor": "Run",
+    "Maven.hellofx [site].executor": "Run",
+    "Maven.parent [install].executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "project.structure.last.edited": "Libraries",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.44367817",
+    "settings.editor.selected.configurable": "reference.settings.project.maven.repository.indices"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/HelloFX" />
+      <recent name="$PROJECT_DIR$/client/src/main" />
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
+  <component name="RunManager" selected="JAR Application.client-1.0-SNAPSHOT.jar">
+    <configuration name="ClientApp" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.vehicleClient.application.ClientApp" />
+      <module name="client" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.vehicleClient.application.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="client-1.0-SNAPSHOT.jar" type="JarApplication" temporary="true">
+      <option name="JAR_PATH" value="$PROJECT_DIR$/client/target/client-1.0-SNAPSHOT.jar" />
+      <option name="VM_PARAMETERS" value="--module-path $USER_HOME$/javafx-sdk-17/lib --add-modules javafx.controls,javafx.fxml" />
+      <option name="ALTERNATIVE_JRE_PATH" />
+      <method v="2" />
+    </configuration>
+    <configuration name="original-client-1.0-SNAPSHOT.jar" type="JarApplication" temporary="true">
+      <option name="JAR_PATH" value="$PROJECT_DIR$/client/target/original-client-1.0-SNAPSHOT.jar" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="JAR Application.client-1.0-SNAPSHOT.jar" />
+        <item itemvalue="JAR Application.original-client-1.0-SNAPSHOT.jar" />
+        <item itemvalue="Application.ClientApp" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="1d6e9b10-9a4d-4b68-81c6-08e4d53df08d" name="Changes" comment="" />
+      <created>1749935767982</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1749935767982</updated>
+    </task>
+    <servers />
+  </component>
+</project>
