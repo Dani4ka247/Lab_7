@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1d6e9b10-9a4d-4b68-81c6-08e4d53df08d" name="Changes" comment="lab 8 table+- work">
+    <list default="true" id="1d6e9b10-9a4d-4b68-81c6-08e4d53df08d" name="Changes" comment="lab 8 buttons work">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/main/java/com/vehicleClient/application/ClientApp.java" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/main/java/com/vehicleClient/application/ClientApp.java" afterDir="false" />
     </list>
@@ -172,12 +172,22 @@
       <option name="project" value="LOCAL" />
       <updated>1750349175740</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="lab 8 table work">
+      <option name="closed" value="true" />
+      <created>1750353569357</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1750353569357</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="lab 8 start" />
     <MESSAGE value="lab 8 table+- work" />
-    <option name="LAST_COMMIT_MESSAGE" value="lab 8 table+- work" />
+    <MESSAGE value="lab 8 table work" />
+    <MESSAGE value="lab 8 buttons work" />
+    <option name="LAST_COMMIT_MESSAGE" value="lab 8 buttons work" />
   </component>
 </project>
