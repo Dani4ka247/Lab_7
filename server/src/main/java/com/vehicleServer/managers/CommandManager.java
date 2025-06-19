@@ -25,7 +25,7 @@ public class CommandManager {
         commands.put("show", new ShowCommand(collectionManager));
         commands.put("insert", new InsertCommand(collectionManager));
         commands.put("shutdown", new ExitCommand(collectionManager));
-        commands.put("clear", new ClearCommand(collectionManager));
+        commands.put("clear", new ClearCommand(collectionManager, dbManager)); // Передаём DbManager
         commands.put("history", new HistoryCommand());
         commands.put("info", new InfoCommand(collectionManager));
         commands.put("remove_all_by_engine_power", new RemoveByPower(collectionManager));

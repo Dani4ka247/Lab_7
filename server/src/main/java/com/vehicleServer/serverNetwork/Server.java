@@ -46,7 +46,7 @@ public class Server {
 
     public void start() {
         promptDbCredentials();
-        String url = "jdbc:postgresql://pg:5432/studs";
+        String url = "jdbc:postgresql://localhost:5432/vehicle_db";
         int maxRetries = 5;
         int retryDelayMs = 5000;
 

@@ -103,6 +103,10 @@ public class Vehicle implements Serializable, Comparable<Vehicle> {
         this.id = id;
     }
 
+    public void setName(String name){
+        this.name = name;
+    }
+
     public void setCreationDate(ZonedDateTime creationDate) {
         this.creationDate = creationDate;
     }

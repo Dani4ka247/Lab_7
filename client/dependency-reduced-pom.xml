@@ -21,7 +21,7 @@
             <configuration>
               <transformers>
                 <transformer>
-                  <mainClass>com.vehicleClient.application.ClientApp</mainClass>
+                  <mainClass>com.vehicleClient.application.ClientLauncher</mainClass>
                 </transformer>
               </transformers>
               <filters>
@@ -42,12 +42,6 @@
         <groupId>org.openjfx</groupId>
         <artifactId>javafx-maven-plugin</artifactId>
         <version>0.0.8</version>
-        <configuration>
-          <options>
-            <option>--module-path</option>
-            <option>/Users/mac/Downloads/javafx-sdk-17.0.15/lib</option>
-          </options>
-        </configuration>
       </plugin>
     </plugins>
   </build>

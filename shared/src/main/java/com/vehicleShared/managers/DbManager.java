@@ -185,6 +185,15 @@ public class DbManager {
         return rows > 0;
     }
 
+    public synchronized boolean removeAllVehicles(String userId) throws SQLException {
+        if (db == null) throw new SQLException("база не подключена");
+        if (userId == null) throw new SQLException("пользователь не указан");
+        PreparedStatement stmt = db.prepareStatement("delete from s466080.vehicles where user_id = ?");
+        stmt.setString(1, userId);
+        int rows = stmt.executeUpdate();
+        return rows > 0;
+    }
+
     public synchronized boolean canModify(long id, String userId) throws SQLException {
         if (db == null) throw new SQLException("база не подключена");
         if (userId == null) return false;

@@ -1,5 +1,7 @@
 package com.vehicleClient;
 
+import com.sun.tools.javac.Main;
+import com.vehicleClient.application.ClientApp;
 import com.vehicleShared.model.*;
 import com.vehicleShared.network.Request;
 import com.vehicleShared.network.Response;
@@ -9,6 +11,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 import static com.vehicleShared.managers.CollectionManager.requestVehicleInformation;
@@ -23,7 +26,9 @@ public class Client {
         this.serverAddress = serverAddress;
         this.serverPort = serverPort;
     }
-
+    public static void main(String[] args) {
+        new Client("localhost",6969).start();
+    }
     public void start() {
         try (SocketChannel socketChannel = SocketChannel.open()) {
             socketChannel.connect(new InetSocketAddress(serverAddress, serverPort));
