@@ -4,12 +4,15 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -121,27 +124,113 @@ public class ClientApp extends Application {
         logoutButton.setStyle("-fx-background-color: #d24d46; -fx-text-fill: white;");
 
         addButton.setOnAction(e -> {
-            System.out.println("Добавление объекта...");
-            Vehicle vehicle = new Vehicle(0, new Coordinates(0f, 0), "New Vehicle", 100f, VehicleType.CAR, FuelType.GASOLINE);
-            Task<Response> task = new Task<>() {
-                @Override
-                protected Response call() {
-                    Request request = new Request("insert", null, currentLogin, currentPassword);
-                    request.setVehicle(vehicle);
-                    return sendRequest(request);
-                }
+            // Создаем диалоговое окно
+            Dialog<Vehicle> dialog = new Dialog<>();
+            dialog.setTitle("Добавить транспортное средство");
+            dialog.setHeaderText("Введите данные транспортного средства");
+
+            // Устанавливаем кнопки (OK и Cancel)
+            ButtonType addButtonType = new ButtonType("Добавить", ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+
+            // Создаем поля для ввода
+            GridPane grid = new GridPane();
+            grid.setHgap(10);
+            grid.setVgap(10);
+            grid.setPadding(new Insets(20, 150, 10, 10));
+
+            TextField nameField = new TextField();
+            TextField xField = new TextField();
+            TextField yField = new TextField();
+            TextField powerField = new TextField();
+            ComboBox<VehicleType> typeCombo = new ComboBox<>();
+            typeCombo.getItems().setAll(VehicleType.values());
+            ComboBox<FuelType> fuelCombo = new ComboBox<>();
+            fuelCombo.getItems().setAll(FuelType.values());
+
+            grid.add(new Label("Название:"), 0, 0);
+            grid.add(nameField, 1, 0);
+            grid.add(new Label("Координата X:"), 0, 1);
+            grid.add(xField, 1, 1);
+            grid.add(new Label("Координата Y:"), 0, 2);
+            grid.add(yField, 1, 2);
+            grid.add(new Label("Мощность двигателя:"), 0, 3);
+            grid.add(powerField, 1, 3);
+            grid.add(new Label("Тип:"), 0, 4);
+            grid.add(typeCombo, 1, 4);
+            grid.add(new Label("Тип топлива:"), 0, 5);
+            grid.add(fuelCombo, 1, 5);
+
+            dialog.getDialogPane().setContent(grid);
+
+            // Валидация ввода
+            Node addButtonNode = dialog.getDialogPane().lookupButton(addButtonType);
+            addButtonNode.setDisable(true);
+
+            // Логика валидации
+            ChangeListener<String> validationListener = (observable, oldValue, newValue) -> {
+                boolean isValid = !nameField.getText().isEmpty()
+                        && !xField.getText().isEmpty()
+                        && !yField.getText().isEmpty()
+                        && !powerField.getText().isEmpty()
+                        && typeCombo.getValue() != null
+                        && fuelCombo.getValue() != null;
+                addButtonNode.setDisable(!isValid);
             };
-            task.setOnSucceeded(event -> {
-                Response response = task.getValue();
-                if (response.isSuccess()) {
-                    userLabel.setText("Объект добавлен");
-                    updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
-                } else {
-                    userLabel.setText("Ошибка: " + response.getMessage());
+
+            nameField.textProperty().addListener(validationListener);
+            xField.textProperty().addListener(validationListener);
+            yField.textProperty().addListener(validationListener);
+            powerField.textProperty().addListener(validationListener);
+            typeCombo.valueProperty().addListener((obs, oldVal, newVal) -> validationListener.changed(null, null, null));
+            fuelCombo.valueProperty().addListener((obs, oldVal, newVal) -> validationListener.changed(null, null, null));
+
+            // Преобразование результата в Vehicle
+            dialog.setResultConverter(dialogButton -> {
+                if (dialogButton == addButtonType) {
+                    try {
+                        return new Vehicle(
+                                0, // ID будет сгенерирован сервером
+                                new Coordinates(
+                                        Float.parseFloat(xField.getText()),
+                                        Integer.parseInt(yField.getText())
+                                ),
+                                nameField.getText(),
+                                Float.parseFloat(powerField.getText()),
+                                typeCombo.getValue(),
+                                fuelCombo.getValue()
+                        );
+                    } catch (NumberFormatException ex) {
+                        userLabel.setText("Ошибка: неверный числовой формат");
+                        return null;
+                    }
                 }
+                return null;
             });
-            task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
-            new Thread(task).start();
+
+            // Обработка результата
+            Optional<Vehicle> result = dialog.showAndWait();
+            result.ifPresent(vehicle -> {
+                Task<Response> task = new Task<>() {
+                    @Override
+                    protected Response call() {
+                        Request request = new Request("insert", null, currentLogin, currentPassword);
+                        request.setVehicle(vehicle);
+                        return sendRequest(request);
+                    }
+                };
+                task.setOnSucceeded(event -> {
+                    Response response = task.getValue();
+                    if (response.isSuccess()) {
+                        userLabel.setText("Объект добавлен");
+                        updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
+                    } else {
+                        userLabel.setText("Ошибка: " + response.getMessage());
+                    }
+                });
+                task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
+                new Thread(task).start();
+            });
         });
 
         removeButton.setOnAction(e -> {
@@ -376,41 +465,50 @@ public class ClientApp extends Application {
         vehicles.clear();
 
         try {
-            // Разделяем строку на id и данные
-            String[] parts = message.split(" : ", 2);
-            if (parts.length != 2) return;
-
-            // Извлекаем данные с помощью регулярного выражения
-            Matcher matcher = Pattern.compile(
+            // Разделяем сообщение на строки (предполагаем, что каждая машина на новой строке)
+            String[] lines = message.split("\n");
+            Pattern pattern = Pattern.compile(
                     "\\{id=(\\d+), name=([^,]+), coordinates=\\{x=([\\d.]+), y=(\\d+)\\}, " +
                             "creationDate=(\\d{4}_\\d{2}_\\d{2} \\d{2}:\\d{2}), " +
                             "enginePower=([\\d.]+), type=([^,]+), fuelType=([^}]+)\\}"
-            ).matcher(parts[1]);
-
-            if (!matcher.find()) return;
-
-            Vehicle vehicle = new Vehicle(
-                    Long.parseLong(matcher.group(1)),
-                    new Coordinates(
-                            Float.parseFloat(matcher.group(3)),
-                            Integer.parseInt(matcher.group(4))
-                    ),
-                    matcher.group(2),
-                    Float.parseFloat(matcher.group(6)),
-                    VehicleType.valueOf(matcher.group(7)),
-                    FuelType.valueOf(matcher.group(8))
             );
 
-            vehicle.setCreationDate(LocalDateTime.parse(
-                    matcher.group(5),
-                    DateTimeFormatter.ofPattern("yyyy_MM_dd HH:mm")
-            ).atZone(ZoneId.systemDefault()));
+            for (String line : lines) {
+                if (line.trim().isEmpty()) continue; // Пропускаем пустые строки
 
-            vehicles.add(vehicle);
-            System.out.println("Обновлено 1 элемент в таблице");
+                Matcher matcher = pattern.matcher(line.trim());
+                if (matcher.find()) {
+                    Vehicle vehicle = new Vehicle(
+                            Long.parseLong(matcher.group(1)),
+                            new Coordinates(
+                                    Float.parseFloat(matcher.group(3)),
+                                    Integer.parseInt(matcher.group(4))
+                            ),
+                            matcher.group(2),
+                            Float.parseFloat(matcher.group(6)),
+                            VehicleType.valueOf(matcher.group(7)),
+                            FuelType.valueOf(matcher.group(8))
+                    );
+
+                    vehicle.setCreationDate(LocalDateTime.parse(
+                            matcher.group(5),
+                            DateTimeFormatter.ofPattern("yyyy_MM_dd HH:mm")
+                    ).atZone(ZoneId.systemDefault()));
+
+                    vehicles.add(vehicle);
+                    System.out.println("Добавлен объект: ID " + matcher.group(1) + ", Name: " + matcher.group(2));
+                }
+            }
+
+            if (vehicles.isEmpty()) {
+                System.out.println("Ни один объект не распознан");
+            } else {
+                System.out.println("Обновлено " + vehicles.size() + " элементов в таблице");
+            }
 
         } catch (Exception e) {
             System.out.println("Ошибка парсинга: " + e.getMessage());
+            userLabel.setText("Ошибка парсинга данных: " + e.getMessage());
         }
     }
 
