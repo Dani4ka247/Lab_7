@@ -14,11 +14,15 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import java.io.*;
@@ -53,12 +57,20 @@ public class ClientApp extends Application {
     private Button loginButton = new Button("Login");
     private Button registerButton = new Button("Register");
     private ChoiceBox<String> langChoice = new ChoiceBox<>();
-    private TableView<Vehicle> table;
+    private Canvas canvas;
+    private TableView<Vehicle> tableView;
     private Button addButton;
     private Button removeButton;
     private Button updateButton;
     private Button clearButton;
     private Button logoutButton;
+    private Button removeByPowerButton;
+    private Button removeGreaterKeyButton;
+    private Button sumOfPowerButton;
+    private Button replaceIfLowerButton;
+    private Button toggleViewButton;
+    private boolean showCanvas = true; // По умолчанию показываем область
+    private Map<String, Color> userColors = new HashMap<>();
 
     @Override
     public void start(Stage primaryStage) {
@@ -106,40 +118,42 @@ public class ClientApp extends Application {
     private void showMainWindow() {
         loginStage.close();
 
-        table = new TableView<>();
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        TableColumn<Vehicle, Long> idCol = new TableColumn<>("ID");
-        idCol.setCellValueFactory(cellData -> new SimpleLongProperty(cellData.getValue().getId()).asObject());
-        TableColumn<Vehicle, String> nameCol = new TableColumn<>("Name");
-        nameCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getName()));
-        TableColumn<Vehicle, String> xCol = new TableColumn<>("X");
-        xCol.setCellValueFactory(cellData -> new SimpleStringProperty(String.valueOf(cellData.getValue().getCoordinates().getX())));
-        TableColumn<Vehicle, Integer> yCol = new TableColumn<>("Y");
-        yCol.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getCoordinates().getY()).asObject());
-        TableColumn<Vehicle, String> creationDateCol = new TableColumn<>("Creation Date");
-        creationDateCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getCreationDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
-        TableColumn<Vehicle, Float> enginePowerCol = new TableColumn<>("Engine Power");
-        enginePowerCol.setCellValueFactory(cellData -> new SimpleFloatProperty(cellData.getValue().getPower()).asObject());
-        TableColumn<Vehicle, String> typeCol = new TableColumn<>("Type");
-        typeCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getType().toString()));
-        TableColumn<Vehicle, String> fuelTypeCol = new TableColumn<>("Fuel Type");
-        fuelTypeCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFuelType().toString()));
-        table.getColumns().addAll(idCol, nameCol, xCol, yCol, creationDateCol, enginePowerCol, typeCol, fuelTypeCol);
-        table.setItems(vehicles);
+        canvas = new Canvas(800, 400);
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.setFill(Color.BLACK);
+        gc.fillRect(0, 0, 800, 400);
+        canvas.setOnMouseClicked(this::handleCanvasClick);
 
-        table.setStyle("-fx-background-color: #333544; -fx-text-fill: white;");
+        tableView = new TableView<>();
+        TableColumn<Vehicle, Long> idColumn = new TableColumn<>("ID");
+        idColumn.setCellValueFactory(cellData -> new SimpleLongProperty(cellData.getValue().getId()).asObject());
+        TableColumn<Vehicle, String> nameColumn = new TableColumn<>("Название");
+        nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getName()));
+        TableColumn<Vehicle, Float> xColumn = new TableColumn<>("X");
+        xColumn.setCellValueFactory(cellData -> new SimpleFloatProperty(cellData.getValue().getCoordinates().getX()).asObject());
+        TableColumn<Vehicle, Integer> yColumn = new TableColumn<>("Y");
+        yColumn.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getCoordinates().getY()).asObject());
+        TableColumn<Vehicle, Float> powerColumn = new TableColumn<>("Мощность");
+        powerColumn.setCellValueFactory(cellData -> new SimpleFloatProperty(cellData.getValue().getPower()).asObject());
+        TableColumn<Vehicle, String> typeColumn = new TableColumn<>("Тип");
+        typeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getType().toString()));
+        TableColumn<Vehicle, String> fuelColumn = new TableColumn<>("Топливо");
+        fuelColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFuelType().toString()));
+        tableView.getColumns().addAll(idColumn, nameColumn, xColumn, yColumn, powerColumn, typeColumn, fuelColumn);
+        tableView.setItems(vehicles);
 
         addButton = new Button("Add");
         removeButton = new Button("Remove");
         updateButton = new Button("Update");
         clearButton = new Button("Clear");
         logoutButton = new Button("Logout");
-        Button removeByPowerButton = new Button("Remove by Power");
-        Button removeGreaterKeyButton = new Button("Remove > Key");
-        Button sumOfPowerButton = new Button("Sum of Power");
-        Button replaceIfLowerButton = new Button("Replace if Lower");
+        removeByPowerButton = new Button("Remove by Power");
+        removeGreaterKeyButton = new Button("Remove > Key");
+        sumOfPowerButton = new Button("Sum of Power");
+        replaceIfLowerButton = new Button("Replace if Lower");
+        toggleViewButton = new Button("Переключить вид");
 
-        HBox commandButtons = new HBox(10, addButton, removeButton, updateButton, clearButton, removeByPowerButton, removeGreaterKeyButton, sumOfPowerButton, replaceIfLowerButton);
+        HBox commandButtons = new HBox(10, addButton, removeButton, updateButton, clearButton, removeByPowerButton, removeGreaterKeyButton, sumOfPowerButton, replaceIfLowerButton, toggleViewButton);
         commandButtons.setHgrow(addButton, Priority.ALWAYS);
         commandButtons.setHgrow(removeButton, Priority.ALWAYS);
         commandButtons.setHgrow(updateButton, Priority.ALWAYS);
@@ -148,6 +162,7 @@ public class ClientApp extends Application {
         commandButtons.setHgrow(removeGreaterKeyButton, Priority.ALWAYS);
         commandButtons.setHgrow(sumOfPowerButton, Priority.ALWAYS);
         commandButtons.setHgrow(replaceIfLowerButton, Priority.ALWAYS);
+        commandButtons.setHgrow(toggleViewButton, Priority.ALWAYS);
         commandButtons.setPadding(new Insets(10));
 
         addButton.setStyle("-fx-background-color: #d24d46; -fx-text-fill: white;");
@@ -159,6 +174,7 @@ public class ClientApp extends Application {
         removeGreaterKeyButton.setStyle("-fx-background-color: #d24d46; -fx-text-fill: white;");
         sumOfPowerButton.setStyle("-fx-background-color: #d24d46; -fx-text-fill: white;");
         replaceIfLowerButton.setStyle("-fx-background-color: #d24d46; -fx-text-fill: white;");
+        toggleViewButton.setStyle("-fx-background-color: #d24d46; -fx-text-fill: white;");
 
         addButton.setOnAction(e -> {
             Dialog<Vehicle> dialog = new Dialog<>();
@@ -207,6 +223,13 @@ public class ClientApp extends Application {
                         && !powerField.getText().isEmpty()
                         && typeCombo.getValue() != null
                         && fuelCombo.getValue() != null;
+                try {
+                    float x = Float.parseFloat(xField.getText());
+                    int y = Integer.parseInt(yField.getText());
+                    isValid &= x < 982 && y < 67;
+                } catch (NumberFormatException ex) {
+                    isValid = false;
+                }
                 addButtonNode.setDisable(!isValid);
             };
 
@@ -220,19 +243,23 @@ public class ClientApp extends Application {
             dialog.setResultConverter(dialogButton -> {
                 if (dialogButton == addButtonType) {
                     try {
-                        return new Vehicle(
+                        float x = Float.parseFloat(xField.getText());
+                        int y = Integer.parseInt(yField.getText());
+                        if (x >= 982 || y >= 67) {
+                            userLabel.setText("Ошибка: Координаты должны быть x < 982 и y < 67");
+                            return null;
+                        }
+                        Vehicle vehicle = new Vehicle(
                                 0,
-                                new Coordinates(
-                                        Float.parseFloat(xField.getText()),
-                                        Integer.parseInt(yField.getText())
-                                ),
+                                new Coordinates(x, y),
                                 nameField.getText(),
                                 Float.parseFloat(powerField.getText()),
                                 typeCombo.getValue(),
                                 fuelCombo.getValue()
                         );
-                    } catch (NumberFormatException ex) {
-                        userLabel.setText("Ошибка: неверный числовой формат");
+                        return vehicle;
+                    } catch (IllegalArgumentException ex) {
+                        userLabel.setText("Ошибка: неверный числовой формат или координаты");
                         return null;
                     }
                 }
@@ -264,8 +291,7 @@ public class ClientApp extends Application {
         });
 
         removeButton.setOnAction(e -> {
-            System.out.println("Удаление объекта...");
-            Vehicle selected = table.getSelectionModel().getSelectedItem();
+            Vehicle selected = showCanvas ? findVehicleAt(canvas.getGraphicsContext2D(), canvas.getWidth() / 2, canvas.getHeight() / 2) : tableView.getSelectionModel().getSelectedItem();
             if (selected == null) {
                 userLabel.setText("Выберите объект для удаления");
                 return;
@@ -274,9 +300,7 @@ public class ClientApp extends Application {
                 @Override
                 protected Response call() {
                     Request request = new Request("remove", String.valueOf(selected.getId()), currentLogin, currentPassword);
-                    Response response = sendRequest(request);
-                    System.out.println("Ответ сервера на remove (ID " + selected.getId() + "): " + response);
-                    return response;
+                    return sendRequest(request);
                 }
             };
             task.setOnSucceeded(event -> {
@@ -288,15 +312,12 @@ public class ClientApp extends Application {
                     userLabel.setText("Ошибка удаления: " + response.getMessage());
                 }
             });
-            task.setOnFailed(event -> {
-                System.out.println("Ошибка задачи удаления: " + task.getException().getMessage());
-                userLabel.setText("Ошибка: " + task.getException().getMessage());
-            });
+            task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
             new Thread(task).start();
         });
 
         updateButton.setOnAction(e -> {
-            Vehicle selected = table.getSelectionModel().getSelectedItem();
+            Vehicle selected = showCanvas ? findVehicleAt(canvas.getGraphicsContext2D(), canvas.getWidth() / 2, canvas.getHeight() / 2) : tableView.getSelectionModel().getSelectedItem();
             if (selected == null) {
                 userLabel.setText("Выберите объект для редактирования");
                 return;
@@ -350,6 +371,13 @@ public class ClientApp extends Application {
                         && !powerField.getText().isEmpty()
                         && typeCombo.getValue() != null
                         && fuelCombo.getValue() != null;
+                try {
+                    float x = Float.parseFloat(xField.getText());
+                    int y = Integer.parseInt(yField.getText());
+                    isValid &= x < 982 && y < 67;
+                } catch (NumberFormatException ex) {
+                    isValid = false;
+                }
                 updateButtonNode.setDisable(!isValid);
             };
 
@@ -363,12 +391,15 @@ public class ClientApp extends Application {
             dialog.setResultConverter(dialogButton -> {
                 if (dialogButton == updateButtonType) {
                     try {
+                        float x = Float.parseFloat(xField.getText());
+                        int y = Integer.parseInt(yField.getText());
+                        if (x >= 982 || y >= 67) {
+                            userLabel.setText("Ошибка: Координаты должны быть x < 982 и y < 67");
+                            return null;
+                        }
                         Vehicle updatedVehicle = new Vehicle(
                                 selected.getId(),
-                                new Coordinates(
-                                        Float.parseFloat(xField.getText()),
-                                        Integer.parseInt(yField.getText())
-                                ),
+                                new Coordinates(x, y),
                                 nameField.getText(),
                                 Float.parseFloat(powerField.getText()),
                                 typeCombo.getValue(),
@@ -376,8 +407,8 @@ public class ClientApp extends Application {
                         );
                         updatedVehicle.setCreationDate(selected.getCreationDate());
                         return updatedVehicle;
-                    } catch (NumberFormatException ex) {
-                        userLabel.setText("Ошибка: неверный числовой формат");
+                    } catch (Exception ex) {
+                        userLabel.setText("Ошибка: неверный числовой формат или координаты");
                         return null;
                     }
                 }
@@ -474,9 +505,7 @@ public class ClientApp extends Application {
                     @Override
                     protected Response call() {
                         Request request = new Request("remove_all_by_engine_power", String.valueOf(power), currentLogin, currentPassword);
-                        Response response = sendRequest(request);
-                        System.out.println("Ответ сервера на remove_all_by_engine_power (" + power + "): " + response);
-                        return response;
+                        return sendRequest(request);
                     }
                 };
                 task.setOnSucceeded(event -> {
@@ -594,7 +623,7 @@ public class ClientApp extends Application {
         });
 
         replaceIfLowerButton.setOnAction(e -> {
-            Vehicle selected = table.getSelectionModel().getSelectedItem();
+            Vehicle selected = showCanvas ? findVehicleAt(canvas.getGraphicsContext2D(), canvas.getWidth() / 2, canvas.getHeight() / 2) : tableView.getSelectionModel().getSelectedItem();
             if (selected == null) {
                 userLabel.setText("Выберите объект для замены");
                 return;
@@ -646,6 +675,13 @@ public class ClientApp extends Application {
                         && !powerField.getText().isEmpty()
                         && typeCombo.getValue() != null
                         && fuelCombo.getValue() != null;
+                try {
+                    float x = Float.parseFloat(xField.getText());
+                    int y = Integer.parseInt(yField.getText());
+                    isValid &= x < 982 && y < 67;
+                } catch (NumberFormatException ex) {
+                    isValid = false;
+                }
                 replaceButtonNode.setDisable(!isValid);
             };
 
@@ -659,12 +695,15 @@ public class ClientApp extends Application {
             dialog.setResultConverter(dialogButton -> {
                 if (dialogButton == replaceButtonType) {
                     try {
+                        float x = Float.parseFloat(xField.getText());
+                        int y = Integer.parseInt(yField.getText());
+                        if (x >= 982 || y >= 67) {
+                            userLabel.setText("Ошибка: Координаты должны быть x < 982 и y < 67");
+                            return null;
+                        }
                         Vehicle newVehicle = new Vehicle(
                                 selected.getId(),
-                                new Coordinates(
-                                        Float.parseFloat(xField.getText()),
-                                        Integer.parseInt(yField.getText())
-                                ),
+                                new Coordinates(x, y),
                                 nameField.getText(),
                                 Float.parseFloat(powerField.getText()),
                                 typeCombo.getValue(),
@@ -672,8 +711,8 @@ public class ClientApp extends Application {
                         );
                         newVehicle.setCreationDate(selected.getCreationDate());
                         return newVehicle;
-                    } catch (NumberFormatException ex) {
-                        userLabel.setText("Ошибка: неверный числовой формат");
+                    } catch (IllegalArgumentException ex) {
+                        userLabel.setText("Ошибка: неверный числовой формат или координаты");
                         return null;
                     }
                 }
@@ -702,6 +741,12 @@ public class ClientApp extends Application {
                 task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
                 new Thread(task).start();
             });
+        });
+
+        toggleViewButton.setOnAction(e -> {
+            showCanvas = !showCanvas;
+            toggleViewButton.setText(showCanvas ? "Переключить на таблицу" : "Переключить на область");
+            updateDisplay();
         });
 
         logoutButton.setOnAction(e -> {
@@ -736,7 +781,7 @@ public class ClientApp extends Application {
         HBox.setMargin(logoutButton, new Insets(0, 10, 0, 0));
         topPanel.setAlignment(Pos.CENTER_LEFT);
 
-        VBox root = new VBox(10, topPanel, commandButtons, table);
+        VBox root = new VBox(10, topPanel, commandButtons, showCanvas ? canvas : tableView);
         root.setPadding(new Insets(10));
         root.setStyle("-fx-background-color: #333544;");
 
@@ -744,6 +789,20 @@ public class ClientApp extends Application {
         primaryStage.setTitle("Vehicle Client");
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
+    }
+
+    private void updateDisplay() {
+        Platform.runLater(() -> {
+            VBox root = (VBox) primaryStage.getScene().getRoot();
+            root.getChildren().set(2, showCanvas ? canvas : tableView); // Заменяем отображаемый элемент
+            if (showCanvas) {
+                updateCanvas();
+            } else {
+                tableView.refresh(); // Обновляем таблицу
+            }
+        });
     }
 
     private void connectToServer() {
@@ -882,23 +941,24 @@ public class ClientApp extends Application {
 
                 Matcher matcher = pattern.matcher(line.trim());
                 if (matcher.find()) {
+                    LocalDateTime localDateTime = LocalDateTime.parse(
+                            matcher.group(5),
+                            DateTimeFormatter.ofPattern("yyyy_MM_dd HH:mm")
+                    );
+                    ZonedDateTime creationDate = localDateTime.atZone(ZoneId.systemDefault());
+
                     Vehicle vehicle = new Vehicle(
                             Long.parseLong(matcher.group(1)),
                             new Coordinates(
                                     Float.parseFloat(matcher.group(3)),
                                     Integer.parseInt(matcher.group(4))
                             ),
+                            creationDate,
                             matcher.group(2),
                             Float.parseFloat(matcher.group(6)),
                             VehicleType.valueOf(matcher.group(7)),
                             FuelType.valueOf(matcher.group(8))
                     );
-
-                    vehicle.setCreationDate(LocalDateTime.parse(
-                            matcher.group(5),
-                            DateTimeFormatter.ofPattern("yyyy_MM_dd HH:mm")
-                    ).atZone(ZoneId.systemDefault()));
-
                     vehicles.add(vehicle);
                     System.out.println("Добавлен объект: ID " + matcher.group(1) + ", Name: " + matcher.group(2));
                 }
@@ -910,9 +970,102 @@ public class ClientApp extends Application {
                 System.out.println("Обновлено " + vehicles.size() + " элементов в таблице");
             }
 
+            updateDisplay();
         } catch (Exception e) {
             System.out.println("Ошибка парсинга: " + e.getMessage());
             userLabel.setText("Ошибка парсинга данных: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void updateCanvas() {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.setFill(Color.BLACK);
+        gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+
+        double centerX = canvas.getWidth() / 2;
+        double centerY = canvas.getHeight() / 2;
+
+        for (Vehicle vehicle : vehicles) {
+            double x = centerX + (vehicle.getCoordinates().getX() - 491); // Смещаем, чтобы 0,0 было в центре
+            double y = centerY - vehicle.getCoordinates().getY(); // Инвертируем Y для нормального отображения
+            Color color = getUserColor(vehicle.getId());
+            double size = vehicle.getPower() / 50.0 + 10;
+
+            for (double scale = 0.1; scale <= 1.0; scale += 0.1) {
+                gc.setFill(color);
+                gc.fillOval(x - size * scale / 2, y - size * scale / 2, size * scale, size * scale);
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                gc.setFill(Color.BLACK);
+                gc.fillOval(x - size * scale / 2, y - size * scale / 2, size * scale, size * scale);
+            }
+            gc.setFill(color);
+            gc.fillOval(x - size / 2, y - size / 2, size, size);
+        }
+    }
+
+    private Color getUserColor(long id) {
+        if (!userColors.containsKey(String.valueOf(id))) {
+            Random rand = new Random();
+            float r = rand.nextFloat();
+            float g = rand.nextFloat();
+            float b = rand.nextFloat();
+            userColors.put(String.valueOf(id), new Color(r, g, b, 1.0));
+        }
+        return userColors.get(String.valueOf(id));
+    }
+
+    private Vehicle findVehicleAt(GraphicsContext gc, double clickX, double clickY) {
+        double centerX = canvas.getWidth() / 2;
+        double centerY = canvas.getHeight() / 2;
+
+        for (Vehicle vehicle : vehicles) {
+            double x = centerX + (vehicle.getCoordinates().getX() - 491);
+            double y = centerY - vehicle.getCoordinates().getY();
+            double size = vehicle.getPower() / 50.0 + 10;
+            if (Math.abs(clickX - x) < size / 2 && Math.abs(clickY - y) < size / 2) {
+                return vehicle;
+            }
+        }
+        return null;
+    }
+
+    private void handleCanvasClick(MouseEvent event) {
+        Vehicle selected = findVehicleAt(canvas.getGraphicsContext2D(), event.getX(), event.getY());
+        if (selected != null) {
+            Dialog<String> dialog = new Dialog<>();
+            dialog.setTitle("Информация об объекте");
+            dialog.setHeaderText("Детали транспортного средства");
+
+            ButtonType okButtonType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(okButtonType);
+
+            GridPane grid = new GridPane();
+            grid.setHgap(10);
+            grid.setVgap(10);
+            grid.setPadding(new Insets(20, 150, 10, 10));
+
+            grid.add(new Label("ID:"), 0, 0);
+            grid.add(new Label(String.valueOf(selected.getId())), 1, 0);
+            grid.add(new Label("Название:"), 0, 1);
+            grid.add(new Label(selected.getName()), 1, 1);
+            grid.add(new Label("X:"), 0, 2);
+            grid.add(new Label(String.valueOf(selected.getCoordinates().getX())), 1, 2);
+            grid.add(new Label("Y:"), 0, 3);
+            grid.add(new Label(String.valueOf(selected.getCoordinates().getY())), 1, 3);
+            grid.add(new Label("Мощность:"), 0, 4);
+            grid.add(new Label(String.valueOf(selected.getPower())), 1, 4);
+            grid.add(new Label("Тип:"), 0, 5);
+            grid.add(new Label(selected.getType().toString()), 1, 5);
+            grid.add(new Label("Тип топлива:"), 0, 6);
+            grid.add(new Label(selected.getFuelType().toString()), 1, 6);
+
+            dialog.getDialogPane().setContent(grid);
+            dialog.showAndWait();
         }
     }
 

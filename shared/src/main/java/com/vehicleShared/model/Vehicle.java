@@ -13,6 +13,7 @@ public class Vehicle implements Serializable, Comparable<Vehicle> {
     private Float enginePower;
     private VehicleType type;
     private FuelType fuelType;
+    private String owner; // Новое поле для владельца
 
     public Vehicle(long id, Coordinates coordinates, ZonedDateTime creationDate, String name, Float enginePower, VehicleType type, FuelType fuelType) {
         this.id = id;
@@ -99,15 +100,23 @@ public class Vehicle implements Serializable, Comparable<Vehicle> {
         return fuelType;
     }
 
+    public String getOwner() { // Новый геттер
+        return owner;
+    }
+
     public void setId(long id) {
         this.id = id;
     }
 
-    public void setName(String name){
+    public void setName(String name) {
         this.name = name;
     }
 
     public void setCreationDate(ZonedDateTime creationDate) {
         this.creationDate = creationDate;
+    }
+
+    public void setOwner(String owner) { // Новый сеттер
+        this.owner = owner;
     }
 }

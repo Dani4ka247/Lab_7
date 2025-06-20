@@ -67,6 +67,7 @@ public class DbManager {
                     if (ts != null) {
                         vehicle.setCreationDate(ts.toLocalDateTime().atZone(ZonedDateTime.now().getZone()));
                     }
+                    vehicle.setOwner(rs.getString("user_id")); // Устанавливаем владельца из базы
                     vehicles.add(vehicle);
                 }
             }
@@ -134,12 +135,13 @@ public class DbManager {
             stmt.setFloat(5, vehicle.getPower());
             stmt.setString(6, vehicle.getType().name());
             stmt.setString(7, vehicle.getFuelType().name());
-            stmt.setString(8, userId);
+            stmt.setString(8, userId); // Устанавливаем user_id как владельца
             int rows = stmt.executeUpdate();
             if (rows > 0) {
                 ResultSet rs = stmt.getGeneratedKeys();
                 if (rs.next()) {
-                    vehicle.setId(rs.getLong(1)); // устанавливаем id
+                    vehicle.setId(rs.getLong(1));
+                    vehicle.setOwner(userId); // Устанавливаем владельца после добавления
                     return true;
                 }
             }
@@ -156,7 +158,7 @@ public class DbManager {
             throw new SQLException("некорректные данные машины или пользователь");
         }
         PreparedStatement stmt = db.prepareStatement(
-                "update s466080.vehicles set name = ?, coordinates_x = ?, coordinates_y = ?, creation_date = ?, engine_power = ?, vehicle_type = ?, fuel_type = ? where id = ? and user_id = ?"
+                "update s466080.vehicles set name = ?, coordinates_x = ?, coordinates_y = ?, creation_date = ?, engine_power = ?, vehicle_type = ?, fuel_type = ?, user_id = ? where id = ?"
         );
         stmt.setString(1, vehicle.getName());
         stmt.setFloat(2, vehicle.getCoordinates().getX());
@@ -165,11 +167,12 @@ public class DbManager {
         stmt.setFloat(5, vehicle.getPower());
         stmt.setString(6, vehicle.getType().name());
         stmt.setString(7, vehicle.getFuelType().name());
-        stmt.setLong(8, id);
-        stmt.setString(9, userId);
+        stmt.setString(8, userId); // Устанавливаем нового владельца
+        stmt.setLong(9, id);
         int rows = stmt.executeUpdate();
         if (rows > 0) {
             vehicle.setId(id);
+            vehicle.setOwner(userId); // Обновляем владельца
             return true;
         }
         return false;
