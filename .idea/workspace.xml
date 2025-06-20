@@ -4,12 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1d6e9b10-9a4d-4b68-81c6-08e4d53df08d" name="Changes" comment="lab 8 commands actually work">
+    <list default="true" id="1d6e9b10-9a4d-4b68-81c6-08e4d53df08d" name="Changes" comment="lab 8 commands field+- work">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/main/java/com/vehicleClient/application/ClientApp.java" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/main/java/com/vehicleClient/application/ClientApp.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/managers/DbManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/managers/DbManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/Vehicle.java" beforeDir="false" afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/Vehicle.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/VehicleWrapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/VehicleWrapper.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -191,7 +189,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750360967117</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="lab 8 commands field+- work">
+      <option name="closed" value="true" />
+      <created>1750438366226</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1750438366226</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -211,6 +217,7 @@
     <MESSAGE value="lab 8 table work" />
     <MESSAGE value="lab 8 buttons work" />
     <MESSAGE value="lab 8 commands actually work" />
-    <option name="LAST_COMMIT_MESSAGE" value="lab 8 commands actually work" />
+    <MESSAGE value="lab 8 commands field+- work" />
+    <option name="LAST_COMMIT_MESSAGE" value="lab 8 commands field+- work" />
   </component>
 </project>

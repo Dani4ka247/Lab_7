@@ -14,7 +14,15 @@ public class Vehicle implements Serializable, Comparable<Vehicle> {
     private VehicleType type;
     private FuelType fuelType;
     private String owner; // Новое поле для владельца
+    private Double rotationAngle;
 
+    public Double getRotationAngle() {
+        return rotationAngle;
+    }
+
+    public void setRotationAngle(Double rotationAngle) {
+        this.rotationAngle = rotationAngle;
+    }
     public Vehicle(long id, Coordinates coordinates, ZonedDateTime creationDate, String name, Float enginePower, VehicleType type, FuelType fuelType) {
         this.id = id;
         this.name = name;
@@ -58,7 +66,8 @@ public class Vehicle implements Serializable, Comparable<Vehicle> {
                 ", creationDate=" + creationDate.format(DateTimeFormatter.ofPattern("yyyy_MM_dd HH:mm")) +
                 ", enginePower=" + enginePower +
                 ", type=" + type +
-                ", fuelType=" + fuelType + "}";
+                ", fuelType=" + fuelType +
+                ", owner=" + (owner != null ? owner : "неизвестно") + "}";
     }
 
     public String toJson() {

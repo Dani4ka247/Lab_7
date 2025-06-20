@@ -1,11 +1,12 @@
 package com.vehicleClient.application;
 
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleFloatProperty;
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleLongProperty;
-import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.*;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -36,10 +37,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.vehicleShared.model.*;
 import com.vehicleShared.network.Request;
 import com.vehicleShared.network.Response;
+import javafx.util.Duration;
 
 public class ClientApp extends Application {
     private Stage primaryStage;
@@ -69,8 +72,10 @@ public class ClientApp extends Application {
     private Button sumOfPowerButton;
     private Button replaceIfLowerButton;
     private Button toggleViewButton;
-    private boolean showCanvas = true; // По умолчанию показываем область
+    private Set<Long> displayedVehicleIds = new HashSet<>();
+    private boolean showCanvas = false; // По умолчанию показываем область
     private Map<String, Color> userColors = new HashMap<>();
+    private Map<Long, VehicleAnimation> vehicleAnimations = new HashMap<>();
 
     @Override
     public void start(Stage primaryStage) {
@@ -118,10 +123,10 @@ public class ClientApp extends Application {
     private void showMainWindow() {
         loginStage.close();
 
-        canvas = new Canvas(800, 400);
+        canvas = new Canvas(1000, 86); // Установили размер под область 1000x70
         GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.setFill(Color.BLACK);
-        gc.fillRect(0, 0, 800, 400);
+        gc.setFill(Color.web("#2d2f4a")); // Фон чуть темнее #333544
+        gc.fillRect(0, 0, 1000, 86);
         canvas.setOnMouseClicked(this::handleCanvasClick);
 
         tableView = new TableView<>();
@@ -139,7 +144,10 @@ public class ClientApp extends Application {
         typeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getType().toString()));
         TableColumn<Vehicle, String> fuelColumn = new TableColumn<>("Топливо");
         fuelColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFuelType().toString()));
-        tableView.getColumns().addAll(idColumn, nameColumn, xColumn, yColumn, powerColumn, typeColumn, fuelColumn);
+        TableColumn<Vehicle, String> ownerColumn = new TableColumn<>("Автор");
+        ownerColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getOwner()));
+        tableView.getColumns().addAll(idColumn, nameColumn, xColumn, yColumn, powerColumn, typeColumn, fuelColumn, ownerColumn);
+        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY); // Убираем лишнее пространство
         tableView.setItems(vehicles);
 
         addButton = new Button("Add");
@@ -226,7 +234,7 @@ public class ClientApp extends Application {
                 try {
                     float x = Float.parseFloat(xField.getText());
                     int y = Integer.parseInt(yField.getText());
-                    isValid &= x < 982 && y < 67;
+                    isValid &= x >= 0 && x <= 1000 && y >= 0 && y <= 70;
                 } catch (NumberFormatException ex) {
                     isValid = false;
                 }
@@ -245,8 +253,8 @@ public class ClientApp extends Application {
                     try {
                         float x = Float.parseFloat(xField.getText());
                         int y = Integer.parseInt(yField.getText());
-                        if (x >= 982 || y >= 67) {
-                            userLabel.setText("Ошибка: Координаты должны быть x < 982 и y < 67");
+                        if (x < 0 || x > 1000 || y < 0 || y > 70) {
+                            userLabel.setText("Ошибка: Координаты должны быть x от 0 до 1000 и y от 0 до 70");
                             return null;
                         }
                         Vehicle vehicle = new Vehicle(
@@ -257,8 +265,9 @@ public class ClientApp extends Application {
                                 typeCombo.getValue(),
                                 fuelCombo.getValue()
                         );
+                        vehicle.setOwner(currentLogin); // Устанавливаем текущего пользователя как автора
                         return vehicle;
-                    } catch (IllegalArgumentException ex) {
+                    } catch (Exception ex) {
                         userLabel.setText("Ошибка: неверный числовой формат или координаты");
                         return null;
                     }
@@ -283,9 +292,13 @@ public class ClientApp extends Application {
                         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                     } else {
                         userLabel.setText("Ошибка: " + response.getMessage());
+                        showNotification("Ошибка", response.getMessage());
                     }
                 });
-                task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
+                task.setOnFailed(event -> {
+                    userLabel.setText("Ошибка: " + task.getException().getMessage());
+                    showNotification("Ошибка", task.getException().getMessage());
+                });
                 new Thread(task).start();
             });
         });
@@ -310,9 +323,13 @@ public class ClientApp extends Application {
                     updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                 } else {
                     userLabel.setText("Ошибка удаления: " + response.getMessage());
+                    showNotification("Ошибка удаления", response.getMessage());
                 }
             });
-            task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
+            task.setOnFailed(event -> {
+                userLabel.setText("Ошибка: " + task.getException().getMessage());
+                showNotification("Ошибка", task.getException().getMessage());
+            });
             new Thread(task).start();
         });
 
@@ -320,6 +337,10 @@ public class ClientApp extends Application {
             Vehicle selected = showCanvas ? findVehicleAt(canvas.getGraphicsContext2D(), canvas.getWidth() / 2, canvas.getHeight() / 2) : tableView.getSelectionModel().getSelectedItem();
             if (selected == null) {
                 userLabel.setText("Выберите объект для редактирования");
+                return;
+            }
+            if (!selected.getOwner().equals(currentLogin)) {
+                showNotification("Ошибка доступа", "Вы не можете редактировать объект, созданный другим пользователем");
                 return;
             }
 
@@ -374,7 +395,7 @@ public class ClientApp extends Application {
                 try {
                     float x = Float.parseFloat(xField.getText());
                     int y = Integer.parseInt(yField.getText());
-                    isValid &= x < 982 && y < 67;
+                    isValid &= x >= 0 && x <= 1000 && y >= 0 && y <= 70;
                 } catch (NumberFormatException ex) {
                     isValid = false;
                 }
@@ -393,8 +414,8 @@ public class ClientApp extends Application {
                     try {
                         float x = Float.parseFloat(xField.getText());
                         int y = Integer.parseInt(yField.getText());
-                        if (x >= 982 || y >= 67) {
-                            userLabel.setText("Ошибка: Координаты должны быть x < 982 и y < 67");
+                        if (x < 0 || x > 1000 || y < 0 || y > 70) {
+                            userLabel.setText("Ошибка: Координаты должны быть x от 0 до 1000 и y от 0 до 70");
                             return null;
                         }
                         Vehicle updatedVehicle = new Vehicle(
@@ -406,6 +427,7 @@ public class ClientApp extends Application {
                                 fuelCombo.getValue()
                         );
                         updatedVehicle.setCreationDate(selected.getCreationDate());
+                        updatedVehicle.setOwner(selected.getOwner()); // Сохраняем автора
                         return updatedVehicle;
                     } catch (Exception ex) {
                         userLabel.setText("Ошибка: неверный числовой формат или координаты");
@@ -432,9 +454,13 @@ public class ClientApp extends Application {
                         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                     } else {
                         userLabel.setText("Ошибка: " + response.getMessage());
+                        showNotification("Ошибка обновления", response.getMessage());
                     }
                 });
-                task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
+                task.setOnFailed(event -> {
+                    userLabel.setText("Ошибка: " + task.getException().getMessage());
+                    showNotification("Ошибка", task.getException().getMessage());
+                });
                 new Thread(task).start();
             });
         });
@@ -454,9 +480,13 @@ public class ClientApp extends Application {
                     updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                 } else {
                     userLabel.setText("Ошибка: " + response.getMessage());
+                    showNotification("Ошибка", response.getMessage());
                 }
             });
-            task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
+            task.setOnFailed(event -> {
+                userLabel.setText("Ошибка: " + task.getException().getMessage());
+                showNotification("Ошибка", task.getException().getMessage());
+            });
             new Thread(task).start();
         });
 
@@ -515,9 +545,13 @@ public class ClientApp extends Application {
                         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                     } else {
                         userLabel.setText("Ошибка: " + response.getMessage());
+                        showNotification("Ошибка удаления", response.getMessage());
                     }
                 });
-                task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
+                task.setOnFailed(event -> {
+                    userLabel.setText("Ошибка: " + task.getException().getMessage());
+                    showNotification("Ошибка", task.getException().getMessage());
+                });
                 new Thread(task).start();
             });
         });
@@ -577,9 +611,13 @@ public class ClientApp extends Application {
                         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                     } else {
                         userLabel.setText("Ошибка: " + response.getMessage());
+                        showNotification("Ошибка удаления", response.getMessage());
                     }
                 });
-                task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
+                task.setOnFailed(event -> {
+                    userLabel.setText("Ошибка: " + task.getException().getMessage());
+                    showNotification("Ошибка", task.getException().getMessage());
+                });
                 new Thread(task).start();
             });
         });
@@ -616,9 +654,13 @@ public class ClientApp extends Application {
                     dialog.showAndWait();
                 } else {
                     userLabel.setText("Ошибка: " + response.getMessage());
+                    showNotification("Ошибка", response.getMessage());
                 }
             });
-            task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
+            task.setOnFailed(event -> {
+                userLabel.setText("Ошибка: " + task.getException().getMessage());
+                showNotification("Ошибка", task.getException().getMessage());
+            });
             new Thread(task).start();
         });
 
@@ -626,6 +668,10 @@ public class ClientApp extends Application {
             Vehicle selected = showCanvas ? findVehicleAt(canvas.getGraphicsContext2D(), canvas.getWidth() / 2, canvas.getHeight() / 2) : tableView.getSelectionModel().getSelectedItem();
             if (selected == null) {
                 userLabel.setText("Выберите объект для замены");
+                return;
+            }
+            if (!selected.getOwner().equals(currentLogin)) {
+                showNotification("Ошибка доступа", "Вы не можете заменить объект, созданный другим пользователем");
                 return;
             }
 
@@ -678,7 +724,7 @@ public class ClientApp extends Application {
                 try {
                     float x = Float.parseFloat(xField.getText());
                     int y = Integer.parseInt(yField.getText());
-                    isValid &= x < 982 && y < 67;
+                    isValid &= x >= 0 && x <= 1000 && y >= 0 && y <= 70;
                 } catch (NumberFormatException ex) {
                     isValid = false;
                 }
@@ -697,8 +743,8 @@ public class ClientApp extends Application {
                     try {
                         float x = Float.parseFloat(xField.getText());
                         int y = Integer.parseInt(yField.getText());
-                        if (x >= 982 || y >= 67) {
-                            userLabel.setText("Ошибка: Координаты должны быть x < 982 и y < 67");
+                        if (x < 0 || x > 1000 || y < 0 || y > 70) {
+                            userLabel.setText("Ошибка: Координаты должны быть x от 0 до 1000 и y от 0 до 70");
                             return null;
                         }
                         Vehicle newVehicle = new Vehicle(
@@ -710,8 +756,9 @@ public class ClientApp extends Application {
                                 fuelCombo.getValue()
                         );
                         newVehicle.setCreationDate(selected.getCreationDate());
+                        newVehicle.setOwner(selected.getOwner()); // Сохраняем автора
                         return newVehicle;
-                    } catch (IllegalArgumentException ex) {
+                    } catch (Exception ex) {
                         userLabel.setText("Ошибка: неверный числовой формат или координаты");
                         return null;
                     }
@@ -736,9 +783,13 @@ public class ClientApp extends Application {
                         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                     } else {
                         userLabel.setText("Ошибка: " + response.getMessage());
+                        showNotification("Ошибка замены", response.getMessage());
                     }
                 });
-                task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
+                task.setOnFailed(event -> {
+                    userLabel.setText("Ошибка: " + task.getException().getMessage());
+                    showNotification("Ошибка", task.getException().getMessage());
+                });
                 new Thread(task).start();
             });
         });
@@ -750,6 +801,7 @@ public class ClientApp extends Application {
         });
 
         logoutButton.setOnAction(e -> {
+            clearDisplayedVehicles();
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle("Подтверждение выхода");
             alert.setHeaderText("Вы уверены, что хотите выйти?");
@@ -785,13 +837,30 @@ public class ClientApp extends Application {
         root.setPadding(new Insets(10));
         root.setStyle("-fx-background-color: #333544;");
 
-        Scene scene = new Scene(root, 800, 400);
+        Scene scene = new Scene(root, 1000, 70); // Установили размер сцены под область
+        primaryStage.setMinWidth(1050); // Минимальная ширина
+        primaryStage.setMinHeight(300); // Увеличенная минимальная высота (в два раза)
         primaryStage.setTitle("Vehicle Client");
         primaryStage.setScene(scene);
         primaryStage.show();
 
         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
     }
+
+    private void showNotification(String title, String message) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.setHeaderText(message);
+
+        ButtonType okButtonType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(okButtonType);
+
+        dialog.getDialogPane().setStyle("-fx-background-color: #333544; -fx-text-fill: white;");
+        dialog.getDialogPane().lookupButton(okButtonType).setStyle("-fx-background-color: #d24d46; -fx-text-fill: white;");
+
+        dialog.showAndWait();
+    }
+
 
     private void updateDisplay() {
         Platform.runLater(() -> {
@@ -817,6 +886,7 @@ public class ClientApp extends Application {
     }
 
     private void handleAuth(String command) {
+        clearDisplayedVehicles();
         String login = usernameField.getText().trim();
         String password = passwordField.getText().trim();
         if (login.isEmpty() || password.isEmpty()) {
@@ -926,6 +996,14 @@ public class ClientApp extends Application {
             return;
         }
 
+        // Сохраняем текущие углы перед очисткой
+        Map<Long, Double> existingRotations = new HashMap<>();
+        for (Vehicle vehicle : vehicles) {
+            if (vehicle.getRotationAngle() != null) {
+                existingRotations.put(vehicle.getId(), vehicle.getRotationAngle());
+            }
+        }
+
         vehicles.clear();
 
         try {
@@ -933,7 +1011,7 @@ public class ClientApp extends Application {
             Pattern pattern = Pattern.compile(
                     "\\{id=(\\d+), name=([^,]+), coordinates=\\{x=([\\d.]+), y=(\\d+)\\}, " +
                             "creationDate=(\\d{4}_\\d{2}_\\d{2} \\d{2}:\\d{2}), " +
-                            "enginePower=([\\d.]+), type=([^,]+), fuelType=([^}]+)\\}"
+                            "enginePower=([\\d.]+), type=([^,]+), fuelType=([^,]+), owner=([^}]+)\\}"
             );
 
             for (String line : lines) {
@@ -959,8 +1037,13 @@ public class ClientApp extends Application {
                             VehicleType.valueOf(matcher.group(7)),
                             FuelType.valueOf(matcher.group(8))
                     );
+                    vehicle.setOwner(matcher.group(9)); // Устанавливаем владельца
+                    // Восстанавливаем сохранённый угол, если есть
+                    if (existingRotations.containsKey(vehicle.getId())) {
+                        vehicle.setRotationAngle(existingRotations.get(vehicle.getId()));
+                    }
                     vehicles.add(vehicle);
-                    System.out.println("Добавлен объект: ID " + matcher.group(1) + ", Name: " + matcher.group(2));
+                    System.out.println("Добавлен объект: ID " + matcher.group(1) + ", Name: " + matcher.group(2) + ", Owner: " + matcher.group(9));
                 }
             }
 
@@ -980,52 +1063,251 @@ public class ClientApp extends Application {
 
     private void updateCanvas() {
         GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.setFill(Color.BLACK);
+
+        // Полная очистка холста
+        gc.setFill(Color.web("#2d2f4a"));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-        double centerX = canvas.getWidth() / 2;
-        double centerY = canvas.getHeight() / 2;
+        double offsetX = 10;
+        double offsetY = 10;
+        Random random = new Random();
 
+        // Очистка старых анимаций
+        vehicleAnimations.keySet().removeIf(vehicleId ->
+                vehicles.stream().noneMatch(v -> v.getId() == vehicleId)
+        );
+
+        // 1. Отрисовка статичных объектов
         for (Vehicle vehicle : vehicles) {
-            double x = centerX + (vehicle.getCoordinates().getX() - 491); // Смещаем, чтобы 0,0 было в центре
-            double y = centerY - vehicle.getCoordinates().getY(); // Инвертируем Y для нормального отображения
-            Color color = getUserColor(vehicle.getId());
+            if (displayedVehicleIds.contains(vehicle.getId())) {
+                drawStaticVehicle(gc, vehicle, offsetX, offsetY);
+            }
+        }
+
+        // 2. Анимация новых объектов
+        List<Vehicle> newVehicles = vehicles.stream()
+                .filter(v -> !displayedVehicleIds.contains(v.getId()))
+                .collect(Collectors.toList());
+
+        for (int i = 0; i < newVehicles.size(); i++) {
+            Vehicle vehicle = newVehicles.get(i);
+
+            if (vehicleAnimations.containsKey(vehicle.getId())) {
+                continue;
+            }
+
+            double targetX = vehicle.getCoordinates().getX() + offsetX;
+            double targetY = vehicle.getCoordinates().getY() + offsetY;
+            Color color = getUserColor(vehicle.getOwner());
             double size = vehicle.getPower() / 50.0 + 10;
 
-            for (double scale = 0.1; scale <= 1.0; scale += 0.1) {
-                gc.setFill(color);
-                gc.fillOval(x - size * scale / 2, y - size * scale / 2, size * scale, size * scale);
-                try {
-                    Thread.sleep(50);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                gc.setFill(Color.BLACK);
-                gc.fillOval(x - size * scale / 2, y - size * scale / 2, size * scale, size * scale);
+            // Случайное направление появления
+            double startX, startY;
+            int direction = random.nextInt(4);
+            switch (direction) {
+                case 0: // слева
+                    startX = -size;
+                    startY = targetY + random.nextDouble() * 50 - 25;
+                    break;
+                case 1: // справа
+                    startX = canvas.getWidth() + size;
+                    startY = targetY + random.nextDouble() * 50 - 25;
+                    break;
+                case 2: // сверху
+                    startX = targetX + random.nextDouble() * 50 - 25;
+                    startY = -size;
+                    break;
+                default: // снизу
+                    startX = targetX + random.nextDouble() * 50 - 25;
+                    startY = canvas.getHeight() + size;
             }
-            gc.setFill(color);
-            gc.fillOval(x - size / 2, y - size / 2, size, size);
+
+            DoubleProperty x = new SimpleDoubleProperty(startX);
+            DoubleProperty y = new SimpleDoubleProperty(startY);
+            DoubleProperty scale = new SimpleDoubleProperty(0.1);
+            DoubleProperty opacity = new SimpleDoubleProperty(0.0);
+            DoubleProperty angle = new SimpleDoubleProperty(vehicle.getRotationAngle() != null ? vehicle.getRotationAngle() : random.nextDouble() * 360);
+
+            // Для эффекта шлейфа
+            List<Point> trailPositions = new ArrayList<>();
+            List<Double> trailAngles = new ArrayList<>();
+
+            Timeline animation = new Timeline(
+                    new KeyFrame(Duration.ZERO,
+                            new KeyValue(x, startX),
+                            new KeyValue(y, startY),
+                            new KeyValue(scale, 0.1),
+                            new KeyValue(opacity, 0.0),
+                            new KeyValue(angle, vehicle.getRotationAngle() != null ? vehicle.getRotationAngle() : random.nextDouble() * 360)
+                    ),
+                    new KeyFrame(Duration.millis(100),
+                            new KeyValue(opacity, 1.0)
+                    ),
+                    new KeyFrame(Duration.millis(800),
+                            new KeyValue(x, targetX, Interpolator.EASE_OUT),
+                            new KeyValue(y, targetY, Interpolator.EASE_OUT),
+                            new KeyValue(scale, 1.0, Interpolator.EASE_OUT),
+                            new KeyValue(angle, vehicle.getRotationAngle() != null ? vehicle.getRotationAngle() : random.nextDouble() * 360, Interpolator.EASE_BOTH)
+                    )
+            );
+
+            animation.currentTimeProperty().addListener((obs, oldVal, newVal) -> {
+                // Сохраняем позиции и углы для шлейфа
+                if (newVal.toMillis() % 10 == 0) {
+                    trailPositions.add(new Point(x.get(), y.get()));
+                    trailAngles.add(angle.get());
+                    if (trailPositions.size() > 15) {
+                        trailPositions.remove(0);
+                        trailAngles.remove(0);
+                    }
+                }
+
+                // Очистка холста
+                gc.setFill(Color.web("#2d2f4a"));
+                gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+
+                // Отрисовка статичных объектов
+                for (Vehicle v : vehicles) {
+                    if (displayedVehicleIds.contains(v.getId())) {
+                        drawStaticVehicle(gc, v, offsetX, offsetY);
+                    }
+                }
+
+                // Отрисовка шлейфа
+                for (int j = 0; j < trailPositions.size(); j++) {
+                    Point p = trailPositions.get(j);
+                    double trailOpacity = 0.2 * (j / (double)trailPositions.size());
+                    double trailSize = size * (0.3 + 0.7 * (j / (double)trailPositions.size()));
+
+                    gc.save();
+                    gc.translate(p.x, p.y);
+                    gc.rotate(trailAngles.get(j));
+                    gc.translate(-p.x, -p.y);
+
+                    gc.setFill(Color.color(color.getRed(), color.getGreen(), color.getBlue(), trailOpacity));
+                    drawVehicle(gc, p.x, p.y, trailSize, vehicle.getType(), 0.7);
+                    gc.restore();
+                }
+
+                // Отрисовка анимируемых объектов
+                for (VehicleAnimation anim : vehicleAnimations.values()) {
+                    drawAnimatedVehicle(gc, anim);
+                }
+            });
+
+            animation.setOnFinished(e -> {
+                displayedVehicleIds.add(vehicle.getId());
+                vehicle.setRotationAngle(angle.get()); // Сохраняем угол после анимации
+                vehicleAnimations.remove(vehicle.getId());
+                Platform.runLater(this::updateCanvas);
+            });
+
+            animation.setDelay(Duration.millis(i * 150));
+
+            vehicleAnimations.put(vehicle.getId(),
+                    new VehicleAnimation(x, y, scale, opacity, angle, animation, vehicle));
+            animation.play();
         }
     }
 
-    private Color getUserColor(long id) {
-        if (!userColors.containsKey(String.valueOf(id))) {
-            Random rand = new Random();
-            float r = rand.nextFloat();
-            float g = rand.nextFloat();
-            float b = rand.nextFloat();
-            userColors.put(String.valueOf(id), new Color(r, g, b, 1.0));
+    private void drawStaticVehicle(GraphicsContext gc, Vehicle vehicle,
+                                   double offsetX, double offsetY) {
+        double x = vehicle.getCoordinates().getX() + offsetX;
+        double y = vehicle.getCoordinates().getY() + offsetY;
+        Color color = getUserColor(vehicle.getOwner());
+        double size = vehicle.getPower() / 50.0 + 10;
+        double angle = vehicle.getRotationAngle() != null ? vehicle.getRotationAngle() : 0; // Используем сохранённый угол
+
+        gc.save();
+        gc.translate(x, y);
+        gc.rotate(angle);
+        gc.translate(-x, -y);
+        gc.setFill(color);
+        drawVehicle(gc, x, y, size, vehicle.getType(), 1.0);
+        gc.restore();
+    }
+
+    private void drawAnimatedVehicle(GraphicsContext gc, VehicleAnimation anim) {
+        Vehicle vehicle = anim.vehicle;
+        Color color = Color.color(
+                getUserColor(vehicle.getOwner()).getRed(),
+                getUserColor(vehicle.getOwner()).getGreen(),
+                getUserColor(vehicle.getOwner()).getBlue(),
+                anim.opacity.get()
+        );
+        double size = vehicle.getPower() / 50.0 + 10;
+
+        gc.save();
+        gc.translate(anim.x.get(), anim.y.get());
+        gc.rotate(anim.angle.get());
+        gc.translate(-anim.x.get(), -anim.y.get());
+        gc.setFill(color);
+        drawVehicle(gc, anim.x.get(), anim.y.get(), size,
+                vehicle.getType(), anim.scale.get());
+        gc.restore();
+    }
+
+    private static class Point {
+        double x, y;
+        public Point(double x, double y) {
+            this.x = x;
+            this.y = y;
         }
-        return userColors.get(String.valueOf(id));
+    }
+
+    private static class VehicleAnimation {
+        DoubleProperty x, y, scale, opacity, angle;
+        Timeline timeline;
+        Vehicle vehicle;
+
+        public VehicleAnimation(DoubleProperty x, DoubleProperty y,
+                                DoubleProperty scale, DoubleProperty opacity,
+                                DoubleProperty angle, Timeline timeline,
+                                Vehicle vehicle) {
+            this.x = x;
+            this.y = y;
+            this.scale = scale;
+            this.opacity = opacity;
+            this.angle = angle;
+            this.timeline = timeline;
+            this.vehicle = vehicle;
+        }
+    }
+
+    private Map<Long, Timeline> currentAnimations = new HashMap<>();
+
+    private void clearDisplayedVehicles() {
+        displayedVehicleIds.clear();
+        if (currentAnimations != null) {
+            currentAnimations.values().forEach(Timeline::stop);
+            currentAnimations.clear();
+        }
+    }
+
+    private void drawVehicle(GraphicsContext gc, double x, double y, double size, VehicleType type, double scale) {
+        double scaledSize = size * scale;
+        switch (type) {
+            case CAR:
+                gc.fillRect(x - scaledSize / 2, y - scaledSize / 4, scaledSize, scaledSize / 2);
+                break;
+            case BOAT:
+                double[] xPoints = {x, x - scaledSize / 2, x + scaledSize / 2};
+                double[] yPoints = {y - scaledSize / 4, y + scaledSize / 4, y + scaledSize / 4};
+                gc.fillPolygon(xPoints, yPoints, 3);
+                break;
+            case HOVERBOARD:
+                gc.fillOval(x - scaledSize / 2, y - scaledSize / 2, scaledSize, scaledSize);
+                break;
+        }
     }
 
     private Vehicle findVehicleAt(GraphicsContext gc, double clickX, double clickY) {
-        double centerX = canvas.getWidth() / 2;
-        double centerY = canvas.getHeight() / 2;
+        double offsetX = 10; // Отступ для соответствия с отрисовкой
+        double offsetY = 10; // Отступ для соответствия с отрисовкой
 
         for (Vehicle vehicle : vehicles) {
-            double x = centerX + (vehicle.getCoordinates().getX() - 491);
-            double y = centerY - vehicle.getCoordinates().getY();
+            double x = vehicle.getCoordinates().getX() + offsetX;
+            double y = vehicle.getCoordinates().getY() + offsetY;
             double size = vehicle.getPower() / 50.0 + 10;
             if (Math.abs(clickX - x) < size / 2 && Math.abs(clickY - y) < size / 2) {
                 return vehicle;
@@ -1033,6 +1315,18 @@ public class ClientApp extends Application {
         }
         return null;
     }
+
+    private Color getUserColor(String username) {
+        if (!userColors.containsKey(username)) {
+            Random rand = new Random(username.hashCode());
+            float r = rand.nextFloat();
+            float g = rand.nextFloat();
+            float b = rand.nextFloat();
+            userColors.put(username, new Color(r, g, b, 1.0));
+        }
+        return userColors.get(username);
+    }
+
 
     private void handleCanvasClick(MouseEvent event) {
         Vehicle selected = findVehicleAt(canvas.getGraphicsContext2D(), event.getX(), event.getY());
