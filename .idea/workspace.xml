@@ -4,10 +4,21 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1d6e9b10-9a4d-4b68-81c6-08e4d53df08d" name="Changes" comment="lab 8 commands field+- work">
+    <list default="true" id="1d6e9b10-9a4d-4b68-81c6-08e4d53df08d" name="Changes" comment="lab 8 commands localize +-">
+      <change afterPath="$PROJECT_DIR$/client/src/main/resources/messages_ca.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/main/resources/messages_cs.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/main/resources/messages_en_ZA.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/main/resources/messages_ru.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/encodings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/main/java/com/vehicleClient/Client.java" beforeDir="false" afterPath="$PROJECT_DIR$/server/src/main/java/com/vehicleServer/Client.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/main/java/com/vehicleClient/application/ClientApp.java" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/main/java/com/vehicleClient/application/ClientApp.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/Vehicle.java" beforeDir="false" afterPath="$PROJECT_DIR$/shared/src/main/java/com/vehicleShared/model/Vehicle.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/main/resources/com/vehicleClient/Messages_ru_utf8.utf8" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/main/resources/com/vehicleClient/messages_ca.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/main/resources/com/vehicleClient/messages_cs.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/main/resources/com/vehicleClient/messages_en_ZA.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/main/resources/com/vehicleClient/messages_ru.properties" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,51 +61,51 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Application.Client.executor&quot;: &quot;Run&quot;,
-    &quot;Application.ClientApp.executor&quot;: &quot;Run&quot;,
-    &quot;Application.ClientLauncher.executor&quot;: &quot;Run&quot;,
-    &quot;Application.ClientMain.executor&quot;: &quot;Run&quot;,
-    &quot;Application.HelloFX.executor&quot;: &quot;Run&quot;,
-    &quot;Application.ServerMain.executor&quot;: &quot;Run&quot;,
-    &quot;JAR Application.client-1.0-SNAPSHOT.jar.executor&quot;: &quot;Run&quot;,
-    &quot;JAR Application.original-client-1.0-SNAPSHOT.jar.executor&quot;: &quot;Run&quot;,
-    &quot;Maven.Unknown [install].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.Unknown [site].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.client [clean].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.client [compile].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.client [install].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.client [site].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.client [validate].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.hellofx [install].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.hellofx [site].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.parent [install].executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Libraries&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.44367817&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.Client.executor": "Run",
+    "Application.ClientApp.executor": "Run",
+    "Application.ClientLauncher.executor": "Run",
+    "Application.ClientMain.executor": "Run",
+    "Application.HelloFX.executor": "Run",
+    "Application.ServerMain.executor": "Run",
+    "JAR Application.client-1.0-SNAPSHOT.jar.executor": "Run",
+    "JAR Application.original-client-1.0-SNAPSHOT.jar.executor": "Run",
+    "Maven.Unknown [install].executor": "Run",
+    "Maven.Unknown [site].executor": "Run",
+    "Maven.client [clean].executor": "Run",
+    "Maven.client [compile].executor": "Run",
+    "Maven.client [install].executor": "Run",
+    "Maven.client [site].executor": "Run",
+    "Maven.client [validate].executor": "Run",
+    "Maven.hellofx [install].executor": "Run",
+    "Maven.hellofx [site].executor": "Run",
+    "Maven.parent [install].executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "project.structure.last.edited": "Libraries",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.44367817",
+    "settings.editor.selected.configurable": "File.Encoding"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/client/src/main/resources" />
       <recent name="$PROJECT_DIR$/client/src/main/resources/com/vehicleClient" />
       <recent name="$PROJECT_DIR$/client/src/main/java/com/vehicleClient" />
       <recent name="$PROJECT_DIR$/HelloFX" />
       <recent name="$PROJECT_DIR$/client/src/main" />
-      <recent name="$PROJECT_DIR$" />
     </key>
   </component>
   <component name="RunManager" selected="Application.ClientLauncher">
     <configuration name="Client" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="com.vehicleClient.Client" />
+      <option name="MAIN_CLASS_NAME" value="com.vehicleServer.Client" />
       <module name="client" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="com.vehicleClient.*" />
+          <option name="PATTERN" value="com.vehicleServer.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
@@ -197,7 +208,15 @@
       <option name="project" value="LOCAL" />
       <updated>1750438366226</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="lab 8 commands field actually work">
+      <option name="closed" value="true" />
+      <created>1750461736821</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1750461736821</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -218,6 +237,8 @@
     <MESSAGE value="lab 8 buttons work" />
     <MESSAGE value="lab 8 commands actually work" />
     <MESSAGE value="lab 8 commands field+- work" />
-    <option name="LAST_COMMIT_MESSAGE" value="lab 8 commands field+- work" />
+    <MESSAGE value="lab 8 commands field actually work" />
+    <MESSAGE value="lab 8 commands localize +-" />
+    <option name="LAST_COMMIT_MESSAGE" value="lab 8 commands localize +-" />
   </component>
 </project>

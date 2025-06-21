@@ -1,7 +1,6 @@
-package com.vehicleClient;
+package com.vehicleServer;
 
-import com.sun.tools.javac.Main;
-import com.vehicleClient.application.ClientApp;
+
 import com.vehicleShared.model.*;
 import com.vehicleShared.network.Request;
 import com.vehicleShared.network.Response;
@@ -11,7 +10,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
 import java.util.Scanner;
 
 import static com.vehicleShared.managers.CollectionManager.requestVehicleInformation;

@@ -30,6 +30,7 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -55,10 +56,10 @@ public class ClientApp extends Application {
     private SocketChannel socketChannel;
     private String currentLogin;
     private String currentPassword;
-    private Label usernameLabel = new Label("Username");
-    private Label passwordLabel = new Label("Password");
-    private Button loginButton = new Button("Login");
-    private Button registerButton = new Button("Register");
+    private Label usernameLabel = new Label();
+    private Label passwordLabel = new Label();
+    private Button loginButton = new Button();
+    private Button registerButton = new Button();
     private ChoiceBox<String> langChoice = new ChoiceBox<>();
     private Canvas canvas;
     private TableView<Vehicle> tableView;
@@ -73,33 +74,60 @@ public class ClientApp extends Application {
     private Button replaceIfLowerButton;
     private Button toggleViewButton;
     private Set<Long> displayedVehicleIds = new HashSet<>();
-    private boolean showCanvas = false; // По умолчанию показываем область
+    private boolean showCanvas = false;
     private Map<String, Color> userColors = new HashMap<>();
     private Map<Long, VehicleAnimation> vehicleAnimations = new HashMap<>();
+    private ResourceBundle messages;
+    private Locale currentLocale;
+    private NumberFormat numberFormat;
+    private DateTimeFormatter dateTimeFormatter;
 
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
+        setLocale(new Locale("ru"));
         showLoginWindow();
+    }
+
+    private void setLocale(Locale locale) {
+        currentLocale = locale;
+        messages = ResourceBundle.getBundle("messages", locale);
+        numberFormat = NumberFormat.getInstance(locale);
+        dateTimeFormatter = DateTimeFormatter.ofPattern(messages.getString("datetime.format"), locale);
+        updateUI();
+    }
+
+    private void updateUI() {
+        if (loginStage != null && loginStage.isShowing()) {
+            updateLoginWindow();
+        }
+        if (primaryStage != null && primaryStage.isShowing()) {
+            updateMainWindow();
+        }
+    }
+
+    private void updateLoginWindow() {
+        usernameLabel.setText(messages.getString("username"));
+        passwordLabel.setText(messages.getString("password"));
+        loginButton.setText(messages.getString("login"));
+        registerButton.setText(messages.getString("register"));
+        loginStage.setTitle(messages.getString("login.title"));
     }
 
     private void showLoginWindow() {
         loginStage = new Stage();
         langChoice.getItems().clear();
-        langChoice.getItems().addAll("ru", "en_ZA");
-        langChoice.setValue("ru");
+        langChoice.getItems().addAll("ru", "cs", "ca", "en_ZA");
+        langChoice.setValue(currentLocale.toString());
         langChoice.setOnAction(e -> {
-            if (langChoice.getValue().equals("ru")) {
-                usernameLabel.setText("Логин");
-                passwordLabel.setText("Пароль");
-                loginButton.setText("Войти");
-                registerButton.setText("Зарегистрироваться");
-            } else {
-                usernameLabel.setText("Username");
-                passwordLabel.setText("Password");
-                loginButton.setText("Login");
-                registerButton.setText("Register");
-            }
+            String selectedLang = langChoice.getValue();
+            Locale newLocale = switch (selectedLang) {
+                case "cs" -> new Locale("cs");
+                case "ca" -> new Locale("ca");
+                case "en_ZA" -> new Locale("en", "ZA");
+                default -> new Locale("ru");
+            };
+            setLocale(newLocale);
         });
 
         loginButton.setOnAction(e -> handleAuth("login"));
@@ -113,53 +141,86 @@ public class ClientApp extends Application {
         registerButton.setStyle("-fx-background-color: #d24d46; -fx-text-fill: white;");
 
         Scene loginScene = new Scene(loginRoot, 300, 250);
-        loginStage.setTitle("Vehicle Client - Login");
+        updateLoginWindow();
         loginStage.setScene(loginScene);
         loginStage.show();
 
         connectToServer();
     }
 
+    private void updateMainWindow() {
+        primaryStage.setTitle(messages.getString("main.title"));
+        mainUserLabel.setText(messages.getString("current.user") + (currentLogin != null ? currentLogin : messages.getString("not.authorized")));
+        addButton.setText(messages.getString("add"));
+        removeButton.setText(messages.getString("remove"));
+        updateButton.setText(messages.getString("update"));
+        clearButton.setText(messages.getString("clear"));
+        logoutButton.setText(messages.getString("logout"));
+        removeByPowerButton.setText(messages.getString("remove.by.power"));
+        removeGreaterKeyButton.setText(messages.getString("remove.greater.key"));
+        sumOfPowerButton.setText(messages.getString("sum.of.power"));
+        replaceIfLowerButton.setText(messages.getString("replace.if.lower"));
+        toggleViewButton.setText(showCanvas ? messages.getString("switch.to.table") : messages.getString("switch.to.canvas"));
+
+        TableColumn<Vehicle, Long> idColumn = (TableColumn<Vehicle, Long>) tableView.getColumns().get(0);
+        TableColumn<Vehicle, String> nameColumn = (TableColumn<Vehicle, String>) tableView.getColumns().get(1);
+        TableColumn<Vehicle, Float> xColumn = (TableColumn<Vehicle, Float>) tableView.getColumns().get(2);
+        TableColumn<Vehicle, Integer> yColumn = (TableColumn<Vehicle, Integer>) tableView.getColumns().get(3);
+        TableColumn<Vehicle, Float> powerColumn = (TableColumn<Vehicle, Float>) tableView.getColumns().get(4);
+        TableColumn<Vehicle, String> typeColumn = (TableColumn<Vehicle, String>) tableView.getColumns().get(5);
+        TableColumn<Vehicle, String> fuelColumn = (TableColumn<Vehicle, String>) tableView.getColumns().get(6);
+        TableColumn<Vehicle, String> ownerColumn = (TableColumn<Vehicle, String>) tableView.getColumns().get(7);
+
+        idColumn.setText(messages.getString("id"));
+        nameColumn.setText(messages.getString("name"));
+        xColumn.setText(messages.getString("x"));
+        yColumn.setText(messages.getString("y"));
+        powerColumn.setText(messages.getString("power"));
+        typeColumn.setText(messages.getString("type"));
+        fuelColumn.setText(messages.getString("fuel"));
+        ownerColumn.setText(messages.getString("owner"));
+    }
+
     private void showMainWindow() {
         loginStage.close();
 
-        canvas = new Canvas(1000, 86); // Установили размер под область 1000x70
+        canvas = new Canvas(1000, 86);
         GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.setFill(Color.web("#2d2f4a")); // Фон чуть темнее #333544
+        gc.setFill(Color.web("#2d2f4a"));
         gc.fillRect(0, 0, 1000, 86);
         canvas.setOnMouseClicked(this::handleCanvasClick);
 
         tableView = new TableView<>();
-        TableColumn<Vehicle, Long> idColumn = new TableColumn<>("ID");
+        TableColumn<Vehicle, Long> idColumn = new TableColumn<>();
         idColumn.setCellValueFactory(cellData -> new SimpleLongProperty(cellData.getValue().getId()).asObject());
-        TableColumn<Vehicle, String> nameColumn = new TableColumn<>("Название");
+        TableColumn<Vehicle, String> nameColumn = new TableColumn<>();
         nameColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getName()));
-        TableColumn<Vehicle, Float> xColumn = new TableColumn<>("X");
+        TableColumn<Vehicle, Float> xColumn = new TableColumn<>();
         xColumn.setCellValueFactory(cellData -> new SimpleFloatProperty(cellData.getValue().getCoordinates().getX()).asObject());
-        TableColumn<Vehicle, Integer> yColumn = new TableColumn<>("Y");
+        TableColumn<Vehicle, Integer> yColumn = new TableColumn<>();
         yColumn.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getCoordinates().getY()).asObject());
-        TableColumn<Vehicle, Float> powerColumn = new TableColumn<>("Мощность");
+        TableColumn<Vehicle, Float> powerColumn = new TableColumn<>();
         powerColumn.setCellValueFactory(cellData -> new SimpleFloatProperty(cellData.getValue().getPower()).asObject());
-        TableColumn<Vehicle, String> typeColumn = new TableColumn<>("Тип");
+        TableColumn<Vehicle, String> typeColumn = new TableColumn<>();
         typeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getType().toString()));
-        TableColumn<Vehicle, String> fuelColumn = new TableColumn<>("Топливо");
+        TableColumn<Vehicle, String> fuelColumn = new TableColumn<>();
         fuelColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getFuelType().toString()));
-        TableColumn<Vehicle, String> ownerColumn = new TableColumn<>("Автор");
+        TableColumn<Vehicle, String> ownerColumn = new TableColumn<>();
         ownerColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getOwner()));
         tableView.getColumns().addAll(idColumn, nameColumn, xColumn, yColumn, powerColumn, typeColumn, fuelColumn, ownerColumn);
-        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY); // Убираем лишнее пространство
+        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         tableView.setItems(vehicles);
 
-        addButton = new Button("Add");
-        removeButton = new Button("Remove");
-        updateButton = new Button("Update");
-        clearButton = new Button("Clear");
-        logoutButton = new Button("Logout");
-        removeByPowerButton = new Button("Remove by Power");
-        removeGreaterKeyButton = new Button("Remove > Key");
-        sumOfPowerButton = new Button("Sum of Power");
-        replaceIfLowerButton = new Button("Replace if Lower");
-        toggleViewButton = new Button("Переключить вид");
+        addButton = new Button();
+        removeButton = new Button();
+        updateButton = new Button();
+        clearButton = new Button();
+        logoutButton = new Button();
+        removeByPowerButton = new Button();
+        removeGreaterKeyButton = new Button();
+        sumOfPowerButton = new Button();
+        replaceIfLowerButton = new Button();
+        toggleViewButton = new Button();
 
         HBox commandButtons = new HBox(10, addButton, removeButton, updateButton, clearButton, removeByPowerButton, removeGreaterKeyButton, sumOfPowerButton, replaceIfLowerButton, toggleViewButton);
         commandButtons.setHgrow(addButton, Priority.ALWAYS);
@@ -186,10 +247,10 @@ public class ClientApp extends Application {
 
         addButton.setOnAction(e -> {
             Dialog<Vehicle> dialog = new Dialog<>();
-            dialog.setTitle("Добавить транспортное средство");
-            dialog.setHeaderText("Введите данные транспортного средства");
+            dialog.setTitle(messages.getString("add.vehicle.title"));
+            dialog.setHeaderText(messages.getString("add.vehicle.header"));
 
-            ButtonType addButtonType = new ButtonType("Добавить", ButtonBar.ButtonData.OK_DONE);
+            ButtonType addButtonType = new ButtonType(messages.getString("add"), ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
 
             GridPane grid = new GridPane();
@@ -206,17 +267,17 @@ public class ClientApp extends Application {
             ComboBox<FuelType> fuelCombo = new ComboBox<>();
             fuelCombo.getItems().setAll(FuelType.values());
 
-            grid.add(new Label("Название:"), 0, 0);
+            grid.add(new Label(messages.getString("name") + ":"), 0, 0);
             grid.add(nameField, 1, 0);
-            grid.add(new Label("Координата X:"), 0, 1);
+            grid.add(new Label(messages.getString("x") + ":"), 0, 1);
             grid.add(xField, 1, 1);
-            grid.add(new Label("Координата Y:"), 0, 2);
+            grid.add(new Label(messages.getString("y") + ":"), 0, 2);
             grid.add(yField, 1, 2);
-            grid.add(new Label("Мощность двигателя:"), 0, 3);
+            grid.add(new Label(messages.getString("power") + ":"), 0, 3);
             grid.add(powerField, 1, 3);
-            grid.add(new Label("Тип:"), 0, 4);
+            grid.add(new Label(messages.getString("type") + ":"), 0, 4);
             grid.add(typeCombo, 1, 4);
-            grid.add(new Label("Тип топлива:"), 0, 5);
+            grid.add(new Label(messages.getString("fuel") + ":"), 0, 5);
             grid.add(fuelCombo, 1, 5);
 
             dialog.getDialogPane().setContent(grid);
@@ -254,7 +315,7 @@ public class ClientApp extends Application {
                         float x = Float.parseFloat(xField.getText());
                         int y = Integer.parseInt(yField.getText());
                         if (x < 0 || x > 1000 || y < 0 || y > 70) {
-                            userLabel.setText("Ошибка: Координаты должны быть x от 0 до 1000 и y от 0 до 70");
+                            userLabel.setText(messages.getString("error.coordinates"));
                             return null;
                         }
                         Vehicle vehicle = new Vehicle(
@@ -265,10 +326,10 @@ public class ClientApp extends Application {
                                 typeCombo.getValue(),
                                 fuelCombo.getValue()
                         );
-                        vehicle.setOwner(currentLogin); // Устанавливаем текущего пользователя как автора
+                        vehicle.setOwner(currentLogin);
                         return vehicle;
                     } catch (Exception ex) {
-                        userLabel.setText("Ошибка: неверный числовой формат или координаты");
+                        userLabel.setText(messages.getString("error.format"));
                         return null;
                     }
                 }
@@ -288,16 +349,16 @@ public class ClientApp extends Application {
                 task.setOnSucceeded(event -> {
                     Response response = task.getValue();
                     if (response.isSuccess()) {
-                        userLabel.setText("Объект добавлен");
+                        userLabel.setText(messages.getString("object.added"));
                         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                     } else {
-                        userLabel.setText("Ошибка: " + response.getMessage());
-                        showNotification("Ошибка", response.getMessage());
+                        userLabel.setText(messages.getString("error") + ": " + response.getMessage());
+                        showNotification(messages.getString("error"), response.getMessage());
                     }
                 });
                 task.setOnFailed(event -> {
-                    userLabel.setText("Ошибка: " + task.getException().getMessage());
-                    showNotification("Ошибка", task.getException().getMessage());
+                    userLabel.setText(messages.getString("error") + ": " + task.getException().getMessage());
+                    showNotification(messages.getString("error"), task.getException().getMessage());
                 });
                 new Thread(task).start();
             });
@@ -306,7 +367,7 @@ public class ClientApp extends Application {
         removeButton.setOnAction(e -> {
             Vehicle selected = showCanvas ? findVehicleAt(canvas.getGraphicsContext2D(), canvas.getWidth() / 2, canvas.getHeight() / 2) : tableView.getSelectionModel().getSelectedItem();
             if (selected == null) {
-                userLabel.setText("Выберите объект для удаления");
+                userLabel.setText(messages.getString("error.select.remove"));
                 return;
             }
             Task<Response> task = new Task<>() {
@@ -319,16 +380,16 @@ public class ClientApp extends Application {
             task.setOnSucceeded(event -> {
                 Response response = task.getValue();
                 if (response.isSuccess()) {
-                    userLabel.setText("Объект удалён: ID " + selected.getId());
+                    userLabel.setText(messages.getString("object.removed") + ": ID " + selected.getId());
                     updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                 } else {
-                    userLabel.setText("Ошибка удаления: " + response.getMessage());
-                    showNotification("Ошибка удаления", response.getMessage());
+                    userLabel.setText(messages.getString("error.remove") + ": " + response.getMessage());
+                    showNotification(messages.getString("error.remove"), response.getMessage());
                 }
             });
             task.setOnFailed(event -> {
-                userLabel.setText("Ошибка: " + task.getException().getMessage());
-                showNotification("Ошибка", task.getException().getMessage());
+                userLabel.setText(messages.getString("error") + ": " + task.getException().getMessage());
+                showNotification(messages.getString("error"), task.getException().getMessage());
             });
             new Thread(task).start();
         });
@@ -336,19 +397,19 @@ public class ClientApp extends Application {
         updateButton.setOnAction(e -> {
             Vehicle selected = showCanvas ? findVehicleAt(canvas.getGraphicsContext2D(), canvas.getWidth() / 2, canvas.getHeight() / 2) : tableView.getSelectionModel().getSelectedItem();
             if (selected == null) {
-                userLabel.setText("Выберите объект для редактирования");
+                userLabel.setText(messages.getString("error.select.update"));
                 return;
             }
             if (!selected.getOwner().equals(currentLogin)) {
-                showNotification("Ошибка доступа", "Вы не можете редактировать объект, созданный другим пользователем");
+                showNotification(messages.getString("error.access"), messages.getString("error.not.owner"));
                 return;
             }
 
             Dialog<Vehicle> dialog = new Dialog<>();
-            dialog.setTitle("Обновить транспортное средство");
-            dialog.setHeaderText("Обновите данные транспортного средства");
+            dialog.setTitle(messages.getString("update.vehicle.title"));
+            dialog.setHeaderText(messages.getString("update.vehicle.header"));
 
-            ButtonType updateButtonType = new ButtonType("Обновить", ButtonBar.ButtonData.OK_DONE);
+            ButtonType updateButtonType = new ButtonType(messages.getString("update"), ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(updateButtonType, ButtonType.CANCEL);
 
             GridPane grid = new GridPane();
@@ -357,9 +418,9 @@ public class ClientApp extends Application {
             grid.setPadding(new Insets(20, 150, 10, 10));
 
             TextField nameField = new TextField(selected.getName());
-            TextField xField = new TextField(String.valueOf(selected.getCoordinates().getX()));
+            TextField xField = new TextField(numberFormat.format(selected.getCoordinates().getX()));
             TextField yField = new TextField(String.valueOf(selected.getCoordinates().getY()));
-            TextField powerField = new TextField(String.valueOf(selected.getPower()));
+            TextField powerField = new TextField(numberFormat.format(selected.getPower()));
             ComboBox<VehicleType> typeCombo = new ComboBox<>();
             typeCombo.getItems().setAll(VehicleType.values());
             typeCombo.setValue(selected.getType());
@@ -367,17 +428,17 @@ public class ClientApp extends Application {
             fuelCombo.getItems().setAll(FuelType.values());
             fuelCombo.setValue(selected.getFuelType());
 
-            grid.add(new Label("Название:"), 0, 0);
+            grid.add(new Label(messages.getString("name") + ":"), 0, 0);
             grid.add(nameField, 1, 0);
-            grid.add(new Label("Координата X:"), 0, 1);
+            grid.add(new Label(messages.getString("x") + ":"), 0, 1);
             grid.add(xField, 1, 1);
-            grid.add(new Label("Координата Y:"), 0, 2);
+            grid.add(new Label(messages.getString("y") + ":"), 0, 2);
             grid.add(yField, 1, 2);
-            grid.add(new Label("Мощность двигателя:"), 0, 3);
+            grid.add(new Label(messages.getString("power") + ":"), 0, 3);
             grid.add(powerField, 1, 3);
-            grid.add(new Label("Тип:"), 0, 4);
+            grid.add(new Label(messages.getString("type") + ":"), 0, 4);
             grid.add(typeCombo, 1, 4);
-            grid.add(new Label("Тип топлива:"), 0, 5);
+            grid.add(new Label(messages.getString("fuel") + ":"), 0, 5);
             grid.add(fuelCombo, 1, 5);
 
             dialog.getDialogPane().setContent(grid);
@@ -393,10 +454,10 @@ public class ClientApp extends Application {
                         && typeCombo.getValue() != null
                         && fuelCombo.getValue() != null;
                 try {
-                    float x = Float.parseFloat(xField.getText());
+                    float x = numberFormat.parse(xField.getText()).floatValue();
                     int y = Integer.parseInt(yField.getText());
                     isValid &= x >= 0 && x <= 1000 && y >= 0 && y <= 70;
-                } catch (NumberFormatException ex) {
+                } catch (Exception ex) {
                     isValid = false;
                 }
                 updateButtonNode.setDisable(!isValid);
@@ -412,25 +473,25 @@ public class ClientApp extends Application {
             dialog.setResultConverter(dialogButton -> {
                 if (dialogButton == updateButtonType) {
                     try {
-                        float x = Float.parseFloat(xField.getText());
+                        float x = numberFormat.parse(xField.getText()).floatValue();
                         int y = Integer.parseInt(yField.getText());
                         if (x < 0 || x > 1000 || y < 0 || y > 70) {
-                            userLabel.setText("Ошибка: Координаты должны быть x от 0 до 1000 и y от 0 до 70");
+                            userLabel.setText(messages.getString("error.coordinates"));
                             return null;
                         }
                         Vehicle updatedVehicle = new Vehicle(
                                 selected.getId(),
                                 new Coordinates(x, y),
                                 nameField.getText(),
-                                Float.parseFloat(powerField.getText()),
+                                numberFormat.parse(powerField.getText()).floatValue(),
                                 typeCombo.getValue(),
                                 fuelCombo.getValue()
                         );
                         updatedVehicle.setCreationDate(selected.getCreationDate());
-                        updatedVehicle.setOwner(selected.getOwner()); // Сохраняем автора
+                        updatedVehicle.setOwner(selected.getOwner());
                         return updatedVehicle;
                     } catch (Exception ex) {
-                        userLabel.setText("Ошибка: неверный числовой формат или координаты");
+                        userLabel.setText(messages.getString("error.format"));
                         return null;
                     }
                 }
@@ -450,16 +511,16 @@ public class ClientApp extends Application {
                 task.setOnSucceeded(event -> {
                     Response response = task.getValue();
                     if (response.isSuccess()) {
-                        userLabel.setText("Объект обновлён");
+                        userLabel.setText(messages.getString("object.updated"));
                         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                     } else {
-                        userLabel.setText("Ошибка: " + response.getMessage());
-                        showNotification("Ошибка обновления", response.getMessage());
+                        userLabel.setText(messages.getString("error") + ": " + response.getMessage());
+                        showNotification(messages.getString("error.update"), response.getMessage());
                     }
                 });
                 task.setOnFailed(event -> {
-                    userLabel.setText("Ошибка: " + task.getException().getMessage());
-                    showNotification("Ошибка", task.getException().getMessage());
+                    userLabel.setText(messages.getString("error") + ": " + task.getException().getMessage());
+                    showNotification(messages.getString("error"), task.getException().getMessage());
                 });
                 new Thread(task).start();
             });
@@ -476,26 +537,26 @@ public class ClientApp extends Application {
             task.setOnSucceeded(event -> {
                 Response response = task.getValue();
                 if (response.isSuccess()) {
-                    userLabel.setText("Коллекция очищена");
+                    userLabel.setText(messages.getString("collection.cleared"));
                     updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                 } else {
-                    userLabel.setText("Ошибка: " + response.getMessage());
-                    showNotification("Ошибка", response.getMessage());
+                    userLabel.setText(messages.getString("error") + ": " + response.getMessage());
+                    showNotification(messages.getString("error"), response.getMessage());
                 }
             });
             task.setOnFailed(event -> {
-                userLabel.setText("Ошибка: " + task.getException().getMessage());
-                showNotification("Ошибка", task.getException().getMessage());
+                userLabel.setText(messages.getString("error") + ": " + task.getException().getMessage());
+                showNotification(messages.getString("error"), task.getException().getMessage());
             });
             new Thread(task).start();
         });
 
         removeByPowerButton.setOnAction(e -> {
             Dialog<Float> dialog = new Dialog<>();
-            dialog.setTitle("Удалить по мощности двигателя");
-            dialog.setHeaderText("Введите мощность двигателя");
+            dialog.setTitle(messages.getString("remove.by.power.title"));
+            dialog.setHeaderText(messages.getString("remove.by.power.header"));
 
-            ButtonType removeButtonType = new ButtonType("Удалить", ButtonBar.ButtonData.OK_DONE);
+            ButtonType removeButtonType = new ButtonType(messages.getString("remove"), ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(removeButtonType, ButtonType.CANCEL);
 
             GridPane grid = new GridPane();
@@ -505,7 +566,7 @@ public class ClientApp extends Application {
 
             TextField powerField = new TextField();
 
-            grid.add(new Label("Мощность:"), 0, 0);
+            grid.add(new Label(messages.getString("power") + ":"), 0, 0);
             grid.add(powerField, 1, 0);
 
             dialog.getDialogPane().setContent(grid);
@@ -520,9 +581,9 @@ public class ClientApp extends Application {
             dialog.setResultConverter(dialogButton -> {
                 if (dialogButton == removeButtonType) {
                     try {
-                        return Float.parseFloat(powerField.getText().trim());
-                    } catch (NumberFormatException ex) {
-                        userLabel.setText("Ошибка: неверный числовой формат");
+                        return numberFormat.parse(powerField.getText().trim()).floatValue();
+                    } catch (Exception ex) {
+                        userLabel.setText(messages.getString("error.format"));
                         return null;
                     }
                 }
@@ -541,16 +602,16 @@ public class ClientApp extends Application {
                 task.setOnSucceeded(event -> {
                     Response response = task.getValue();
                     if (response.isSuccess()) {
-                        userLabel.setText("Объекты с мощностью " + power + " удалены");
+                        userLabel.setText(messages.getString("objects.removed.power") + numberFormat.format(power));
                         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                     } else {
-                        userLabel.setText("Ошибка: " + response.getMessage());
-                        showNotification("Ошибка удаления", response.getMessage());
+                        userLabel.setText(messages.getString("error") + ": " + response.getMessage());
+                        showNotification(messages.getString("error.remove"), response.getMessage());
                     }
                 });
                 task.setOnFailed(event -> {
-                    userLabel.setText("Ошибка: " + task.getException().getMessage());
-                    showNotification("Ошибка", task.getException().getMessage());
+                    userLabel.setText(messages.getString("error") + ": " + task.getException().getMessage());
+                    showNotification(messages.getString("error"), task.getException().getMessage());
                 });
                 new Thread(task).start();
             });
@@ -558,10 +619,10 @@ public class ClientApp extends Application {
 
         removeGreaterKeyButton.setOnAction(e -> {
             Dialog<Long> dialog = new Dialog<>();
-            dialog.setTitle("Удалить объекты с ключом больше");
-            dialog.setHeaderText("Введите ID");
+            dialog.setTitle(messages.getString("remove.greater.key.title"));
+            dialog.setHeaderText(messages.getString("remove.greater.key.header"));
 
-            ButtonType removeButtonType = new ButtonType("Удалить", ButtonBar.ButtonData.OK_DONE);
+            ButtonType removeButtonType = new ButtonType(messages.getString("remove"), ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(removeButtonType, ButtonType.CANCEL);
 
             GridPane grid = new GridPane();
@@ -571,7 +632,7 @@ public class ClientApp extends Application {
 
             TextField keyField = new TextField();
 
-            grid.add(new Label("ID:"), 0, 0);
+            grid.add(new Label(messages.getString("id") + ":"), 0, 0);
             grid.add(keyField, 1, 0);
 
             dialog.getDialogPane().setContent(grid);
@@ -588,7 +649,7 @@ public class ClientApp extends Application {
                     try {
                         return Long.parseLong(keyField.getText().trim());
                     } catch (NumberFormatException ex) {
-                        userLabel.setText("Ошибка: неверный числовой формат");
+                        userLabel.setText(messages.getString("error.format"));
                         return null;
                     }
                 }
@@ -607,16 +668,16 @@ public class ClientApp extends Application {
                 task.setOnSucceeded(event -> {
                     Response response = task.getValue();
                     if (response.isSuccess()) {
-                        userLabel.setText("Объекты с ID больше " + key + " удалены");
+                        userLabel.setText(messages.getString("objects.removed.key") + key);
                         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                     } else {
-                        userLabel.setText("Ошибка: " + response.getMessage());
-                        showNotification("Ошибка удаления", response.getMessage());
+                        userLabel.setText(messages.getString("error") + ": " + response.getMessage());
+                        showNotification(messages.getString("error.remove"), response.getMessage());
                     }
                 });
                 task.setOnFailed(event -> {
-                    userLabel.setText("Ошибка: " + task.getException().getMessage());
-                    showNotification("Ошибка", task.getException().getMessage());
+                    userLabel.setText(messages.getString("error") + ": " + task.getException().getMessage());
+                    showNotification(messages.getString("error"), task.getException().getMessage());
                 });
                 new Thread(task).start();
             });
@@ -634,8 +695,8 @@ public class ClientApp extends Application {
                 Response response = task.getValue();
                 if (response.isSuccess()) {
                     Dialog<String> dialog = new Dialog<>();
-                    dialog.setTitle("Сумма мощности");
-                    dialog.setHeaderText("Результат");
+                    dialog.setTitle(messages.getString("sum.of.power.title"));
+                    dialog.setHeaderText(messages.getString("sum.of.power.header"));
 
                     ButtonType okButtonType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
                     dialog.getDialogPane().getButtonTypes().addAll(okButtonType);
@@ -645,21 +706,38 @@ public class ClientApp extends Application {
                     grid.setVgap(10);
                     grid.setPadding(new Insets(20, 150, 10, 10));
 
-                    Label resultLabel = new Label("Сумма мощности: " + response.getMessage());
-
-                    grid.add(resultLabel, 0, 0);
+                    try {
+                        // Extract the numeric part from the response message
+                        String message = response.getMessage();
+                        // Use regex to extract the number (e.g., "185.0" or "185,0")
+                        Pattern pattern = Pattern.compile("[\\d,.]+");
+                        Matcher matcher = pattern.matcher(message);
+                        if (matcher.find()) {
+                            String numberStr = matcher.group();
+                            // Parse the number using the locale-specific numberFormat
+                            double powerSum = numberFormat.parse(numberStr).doubleValue();
+                            // Format the number for display
+                            Label resultLabel = new Label(messages.getString("sum.of.power.result") + numberFormat.format(powerSum));
+                            grid.add(resultLabel, 0, 0);
+                        } else {
+                            throw new NumberFormatException("No valid number found in response: " + message);
+                        }
+                    } catch (Exception ex) {
+                        userLabel.setText(messages.getString("error.parsing.data") + ex.getMessage());
+                        showNotification(messages.getString("error"), messages.getString("error.parsing.data") + ex.getMessage());
+                        return;
+                    }
 
                     dialog.getDialogPane().setContent(grid);
-
                     dialog.showAndWait();
                 } else {
-                    userLabel.setText("Ошибка: " + response.getMessage());
-                    showNotification("Ошибка", response.getMessage());
+                    userLabel.setText(messages.getString("error") + ": " + response.getMessage());
+                    showNotification(messages.getString("error"), response.getMessage());
                 }
             });
             task.setOnFailed(event -> {
-                userLabel.setText("Ошибка: " + task.getException().getMessage());
-                showNotification("Ошибка", task.getException().getMessage());
+                userLabel.setText(messages.getString("error") + ": " + task.getException().getMessage());
+                showNotification(messages.getString("error"), task.getException().getMessage());
             });
             new Thread(task).start();
         });
@@ -667,19 +745,19 @@ public class ClientApp extends Application {
         replaceIfLowerButton.setOnAction(e -> {
             Vehicle selected = showCanvas ? findVehicleAt(canvas.getGraphicsContext2D(), canvas.getWidth() / 2, canvas.getHeight() / 2) : tableView.getSelectionModel().getSelectedItem();
             if (selected == null) {
-                userLabel.setText("Выберите объект для замены");
+                userLabel.setText(messages.getString("error.select.replace"));
                 return;
             }
             if (!selected.getOwner().equals(currentLogin)) {
-                showNotification("Ошибка доступа", "Вы не можете заменить объект, созданный другим пользователем");
+                showNotification(messages.getString("error.access"), messages.getString("error.not.owner"));
                 return;
             }
 
             Dialog<Vehicle> dialog = new Dialog<>();
-            dialog.setTitle("Заменить если меньше");
-            dialog.setHeaderText("Введите новые данные");
+            dialog.setTitle(messages.getString("replace.if.lower.title"));
+            dialog.setHeaderText(messages.getString("replace.if.lower.header"));
 
-            ButtonType replaceButtonType = new ButtonType("Заменить", ButtonBar.ButtonData.OK_DONE);
+            ButtonType replaceButtonType = new ButtonType(messages.getString("replace"), ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(replaceButtonType, ButtonType.CANCEL);
 
             GridPane grid = new GridPane();
@@ -696,17 +774,17 @@ public class ClientApp extends Application {
             ComboBox<FuelType> fuelCombo = new ComboBox<>();
             fuelCombo.getItems().setAll(FuelType.values());
 
-            grid.add(new Label("Название:"), 0, 0);
+            grid.add(new Label(messages.getString("name") + ":"), 0, 0);
             grid.add(nameField, 1, 0);
-            grid.add(new Label("Координата X:"), 0, 1);
+            grid.add(new Label(messages.getString("x") + ":"), 0, 1);
             grid.add(xField, 1, 1);
-            grid.add(new Label("Координата Y:"), 0, 2);
+            grid.add(new Label(messages.getString("y") + ":"), 0, 2);
             grid.add(yField, 1, 2);
-            grid.add(new Label("Мощность двигателя:"), 0, 3);
+            grid.add(new Label(messages.getString("power") + ":"), 0, 3);
             grid.add(powerField, 1, 3);
-            grid.add(new Label("Тип:"), 0, 4);
+            grid.add(new Label(messages.getString("type") + ":"), 0, 4);
             grid.add(typeCombo, 1, 4);
-            grid.add(new Label("Тип топлива:"), 0, 5);
+            grid.add(new Label(messages.getString("fuel") + ":"), 0, 5);
             grid.add(fuelCombo, 1, 5);
 
             dialog.getDialogPane().setContent(grid);
@@ -722,10 +800,10 @@ public class ClientApp extends Application {
                         && typeCombo.getValue() != null
                         && fuelCombo.getValue() != null;
                 try {
-                    float x = Float.parseFloat(xField.getText());
+                    float x = numberFormat.parse(xField.getText()).floatValue();
                     int y = Integer.parseInt(yField.getText());
                     isValid &= x >= 0 && x <= 1000 && y >= 0 && y <= 70;
-                } catch (NumberFormatException ex) {
+                } catch (Exception ex) {
                     isValid = false;
                 }
                 replaceButtonNode.setDisable(!isValid);
@@ -741,25 +819,25 @@ public class ClientApp extends Application {
             dialog.setResultConverter(dialogButton -> {
                 if (dialogButton == replaceButtonType) {
                     try {
-                        float x = Float.parseFloat(xField.getText());
+                        float x = numberFormat.parse(xField.getText()).floatValue();
                         int y = Integer.parseInt(yField.getText());
                         if (x < 0 || x > 1000 || y < 0 || y > 70) {
-                            userLabel.setText("Ошибка: Координаты должны быть x от 0 до 1000 и y от 0 до 70");
+                            userLabel.setText(messages.getString("error.coordinates"));
                             return null;
                         }
                         Vehicle newVehicle = new Vehicle(
                                 selected.getId(),
                                 new Coordinates(x, y),
                                 nameField.getText(),
-                                Float.parseFloat(powerField.getText()),
+                                numberFormat.parse(powerField.getText()).floatValue(),
                                 typeCombo.getValue(),
                                 fuelCombo.getValue()
                         );
                         newVehicle.setCreationDate(selected.getCreationDate());
-                        newVehicle.setOwner(selected.getOwner()); // Сохраняем автора
+                        newVehicle.setOwner(selected.getOwner());
                         return newVehicle;
                     } catch (Exception ex) {
-                        userLabel.setText("Ошибка: неверный числовой формат или координаты");
+                        userLabel.setText(messages.getString("error.format"));
                         return null;
                     }
                 }
@@ -779,16 +857,16 @@ public class ClientApp extends Application {
                 task.setOnSucceeded(event -> {
                     Response response = task.getValue();
                     if (response.isSuccess()) {
-                        userLabel.setText("Объект заменён, если мощность меньше");
+                        userLabel.setText(messages.getString("object.replaced"));
                         updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
                     } else {
-                        userLabel.setText("Ошибка: " + response.getMessage());
-                        showNotification("Ошибка замены", response.getMessage());
+                        userLabel.setText(messages.getString("error") + ": " + response.getMessage());
+                        showNotification(messages.getString("error.replace"), response.getMessage());
                     }
                 });
                 task.setOnFailed(event -> {
-                    userLabel.setText("Ошибка: " + task.getException().getMessage());
-                    showNotification("Ошибка", task.getException().getMessage());
+                    userLabel.setText(messages.getString("error") + ": " + task.getException().getMessage());
+                    showNotification(messages.getString("error"), task.getException().getMessage());
                 });
                 new Thread(task).start();
             });
@@ -796,16 +874,16 @@ public class ClientApp extends Application {
 
         toggleViewButton.setOnAction(e -> {
             showCanvas = !showCanvas;
-            toggleViewButton.setText(showCanvas ? "Переключить на таблицу" : "Переключить на область");
+            toggleViewButton.setText(showCanvas ? messages.getString("switch.to.table") : messages.getString("switch.to.canvas"));
             updateDisplay();
         });
 
         logoutButton.setOnAction(e -> {
             clearDisplayedVehicles();
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Подтверждение выхода");
-            alert.setHeaderText("Вы уверены, что хотите выйти?");
-            alert.setContentText("Все несохранённые данные будут потеряны.");
+            alert.setTitle(messages.getString("logout.confirm.title"));
+            alert.setHeaderText(messages.getString("logout.confirm.header"));
+            alert.setContentText(messages.getString("logout.confirm.content"));
 
             if (alert.showAndWait().get() == ButtonType.OK) {
                 currentLogin = null;
@@ -814,9 +892,9 @@ public class ClientApp extends Application {
                 if (socketChannel != null && socketChannel.isOpen()) {
                     try {
                         socketChannel.close();
-                        System.out.println("Соединение с сервером закрыто");
+                        System.out.println(messages.getString("server.connection.closed"));
                     } catch (IOException ex) {
-                        System.out.println("Ошибка закрытия соединения: " + ex.getMessage());
+                        System.out.println(messages.getString("error.close.connection") + ex.getMessage());
                     }
                 }
                 primaryStage.close();
@@ -824,12 +902,12 @@ public class ClientApp extends Application {
             }
         });
 
-        mainUserLabel.setText("Текущий пользователь: " + (currentLogin != null ? currentLogin : "Не авторизован"));
         mainUserLabel.setStyle("-fx-text-fill: white;");
 
         HBox topPanel = new HBox(10);
-        topPanel.getChildren().addAll(langChoice, mainUserLabel, logoutButton);
+        topPanel.getChildren().addAll(langChoice, mainUserLabel, toggleViewButton, logoutButton);
         HBox.setHgrow(mainUserLabel, Priority.ALWAYS);
+        HBox.setMargin(toggleViewButton, new Insets(0, 10, 0, 0)); // Отступ для toggleViewButton
         HBox.setMargin(logoutButton, new Insets(0, 10, 0, 0));
         topPanel.setAlignment(Pos.CENTER_LEFT);
 
@@ -837,10 +915,10 @@ public class ClientApp extends Application {
         root.setPadding(new Insets(10));
         root.setStyle("-fx-background-color: #333544;");
 
-        Scene scene = new Scene(root, 1000, 70); // Установили размер сцены под область
-        primaryStage.setMinWidth(1050); // Минимальная ширина
-        primaryStage.setMinHeight(300); // Увеличенная минимальная высота (в два раза)
-        primaryStage.setTitle("Vehicle Client");
+        Scene scene = new Scene(root, 1000, 70);
+        primaryStage.setMinWidth(1050);
+        primaryStage.setMinHeight(300);
+        updateMainWindow();
         primaryStage.setScene(scene);
         primaryStage.show();
 
@@ -861,15 +939,14 @@ public class ClientApp extends Application {
         dialog.showAndWait();
     }
 
-
     private void updateDisplay() {
         Platform.runLater(() -> {
             VBox root = (VBox) primaryStage.getScene().getRoot();
-            root.getChildren().set(2, showCanvas ? canvas : tableView); // Заменяем отображаемый элемент
+            root.getChildren().set(2, showCanvas ? canvas : tableView);
             if (showCanvas) {
                 updateCanvas();
             } else {
-                tableView.refresh(); // Обновляем таблицу
+                tableView.refresh();
             }
         });
     }
@@ -878,10 +955,10 @@ public class ClientApp extends Application {
         try {
             socketChannel = SocketChannel.open();
             socketChannel.connect(new InetSocketAddress("localhost", 6969));
-            System.out.println("подключено к серверу");
+            System.out.println(messages.getString("server.connected"));
         } catch (IOException e) {
-            System.out.println("ошибка подключения: " + e.getMessage());
-            userLabel.setText("Ошибка подключения: " + e.getMessage());
+            System.out.println(messages.getString("error.connect") + e.getMessage());
+            userLabel.setText(messages.getString("error.connect") + e.getMessage());
         }
     }
 
@@ -890,7 +967,7 @@ public class ClientApp extends Application {
         String login = usernameField.getText().trim();
         String password = passwordField.getText().trim();
         if (login.isEmpty() || password.isEmpty()) {
-            userLabel.setText("Ошибка: Логин и пароль не могут быть пустыми");
+            userLabel.setText(messages.getString("error.empty.credentials"));
             return;
         }
         currentLogin = null;
@@ -907,29 +984,29 @@ public class ClientApp extends Application {
         };
         task.setOnSucceeded(event -> {
             Response response = task.getValue();
-            System.out.println("Ответ на авторизацию: " + response);
+            System.out.println(messages.getString("auth.response") + response);
             if (response.isSuccess()) {
                 currentLogin = login;
                 currentPassword = password;
-                System.out.println("Установлен логин: " + currentLogin);
+                System.out.println(messages.getString("login.set") + currentLogin);
                 Platform.runLater(() -> {
-                    mainUserLabel.setText("Текущий пользователь: " + currentLogin);
-                    System.out.println("Метка обновлена: " + mainUserLabel.getText());
+                    mainUserLabel.setText(messages.getString("current.user") + currentLogin);
+                    System.out.println(messages.getString("label.updated") + mainUserLabel.getText());
                 });
                 showMainWindow();
                 updateVehiclesFromResponse(sendRequest(new Request("show", null, currentLogin, currentPassword)));
             } else {
-                userLabel.setText("Ошибка авторизации: " + response.getMessage());
+                userLabel.setText(messages.getString("error.auth") + response.getMessage());
             }
         });
-        task.setOnFailed(event -> userLabel.setText("Ошибка: " + task.getException().getMessage()));
+        task.setOnFailed(event -> userLabel.setText(messages.getString("error") + ": " + task.getException().getMessage()));
         new Thread(task).start();
     }
 
     private Response sendRequest(Request request) {
         try {
             if (socketChannel == null || !socketChannel.isOpen()) {
-                return Response.error("канал закрыт");
+                return Response.error(messages.getString("error.channel.closed"));
             }
             socketChannel.socket().setSoTimeout(5000);
 
@@ -951,14 +1028,14 @@ public class ClientApp extends Application {
             while (totalBytesRead < 4) {
                 int bytesRead = socketChannel.read(lengthBuffer);
                 if (bytesRead == -1) {
-                    return Response.error("сервер отключился");
+                    return Response.error(messages.getString("error.server.disconnected"));
                 }
                 totalBytesRead += bytesRead;
             }
             lengthBuffer.flip();
             int length = lengthBuffer.getInt();
             if (length <= 0 || length > 1_000_000) {
-                return Response.error("некорректная длина ответа");
+                return Response.error(messages.getString("error.invalid.response"));
             }
 
             ByteBuffer dataBuffer = ByteBuffer.allocate(length);
@@ -966,7 +1043,7 @@ public class ClientApp extends Application {
             while (totalBytesRead < length) {
                 int bytesRead = socketChannel.read(dataBuffer);
                 if (bytesRead == -1) {
-                    return Response.error("сервер отключился");
+                    return Response.error(messages.getString("error.server.disconnected"));
                 }
                 totalBytesRead += bytesRead;
             }
@@ -979,24 +1056,23 @@ public class ClientApp extends Application {
                 return (Response) ois.readObject();
             }
         } catch (Exception e) {
-            System.out.println("Ошибка отправки запроса: " + e.getMessage());
-            return Response.error("ошибка связи: " + e.getMessage());
+            System.out.println(messages.getString("error.request") + e.getMessage());
+            return Response.error(messages.getString("error.communication") + e.getMessage());
         }
     }
 
     private void updateVehiclesFromResponse(Response response) {
         if (!response.isSuccess()) {
-            userLabel.setText("Ошибка обновления данных: " + response.getMessage());
+            userLabel.setText(messages.getString("error.update.data") + response.getMessage());
             return;
         }
 
         String message = response.getMessage();
         if (message == null || message.isEmpty()) {
-            System.out.println("Сообщение пустое, коллекция не обновлена");
+            System.out.println(messages.getString("error.empty.message"));
             return;
         }
 
-        // Сохраняем текущие углы перед очисткой
         Map<Long, Double> existingRotations = new HashMap<>();
         for (Vehicle vehicle : vehicles) {
             if (vehicle.getRotationAngle() != null) {
@@ -1037,34 +1113,31 @@ public class ClientApp extends Application {
                             VehicleType.valueOf(matcher.group(7)),
                             FuelType.valueOf(matcher.group(8))
                     );
-                    vehicle.setOwner(matcher.group(9)); // Устанавливаем владельца
-                    // Восстанавливаем сохранённый угол, если есть
+                    vehicle.setOwner(matcher.group(9));
                     if (existingRotations.containsKey(vehicle.getId())) {
                         vehicle.setRotationAngle(existingRotations.get(vehicle.getId()));
                     }
                     vehicles.add(vehicle);
-                    System.out.println("Добавлен объект: ID " + matcher.group(1) + ", Name: " + matcher.group(2) + ", Owner: " + matcher.group(9));
+                    System.out.println(messages.getString("object.added.log") + matcher.group(1) + ", Name: " + matcher.group(2) + ", Owner: " + matcher.group(9));
                 }
             }
 
             if (vehicles.isEmpty()) {
-                System.out.println("Ни один объект не распознан");
+                System.out.println(messages.getString("error.no.objects"));
             } else {
-                System.out.println("Обновлено " + vehicles.size() + " элементов в таблице");
+                System.out.println(messages.getString("table.updated") + vehicles.size());
             }
 
             updateDisplay();
         } catch (Exception e) {
-            System.out.println("Ошибка парсинга: " + e.getMessage());
-            userLabel.setText("Ошибка парсинга данных: " + e.getMessage());
+            System.out.println(messages.getString("error.parsing") + e.getMessage());
+            userLabel.setText(messages.getString("error.parsing.data") + e.getMessage());
             e.printStackTrace();
         }
     }
 
     private void updateCanvas() {
         GraphicsContext gc = canvas.getGraphicsContext2D();
-
-        // Полная очистка холста
         gc.setFill(Color.web("#2d2f4a"));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
@@ -1072,19 +1145,16 @@ public class ClientApp extends Application {
         double offsetY = 10;
         Random random = new Random();
 
-        // Очистка старых анимаций
         vehicleAnimations.keySet().removeIf(vehicleId ->
                 vehicles.stream().noneMatch(v -> v.getId() == vehicleId)
         );
 
-        // 1. Отрисовка статичных объектов
         for (Vehicle vehicle : vehicles) {
             if (displayedVehicleIds.contains(vehicle.getId())) {
                 drawStaticVehicle(gc, vehicle, offsetX, offsetY);
             }
         }
 
-        // 2. Анимация новых объектов
         List<Vehicle> newVehicles = vehicles.stream()
                 .filter(v -> !displayedVehicleIds.contains(v.getId()))
                 .collect(Collectors.toList());
@@ -1101,23 +1171,22 @@ public class ClientApp extends Application {
             Color color = getUserColor(vehicle.getOwner());
             double size = vehicle.getPower() / 50.0 + 10;
 
-            // Случайное направление появления
             double startX, startY;
             int direction = random.nextInt(4);
             switch (direction) {
-                case 0: // слева
+                case 0:
                     startX = -size;
                     startY = targetY + random.nextDouble() * 50 - 25;
                     break;
-                case 1: // справа
+                case 1:
                     startX = canvas.getWidth() + size;
                     startY = targetY + random.nextDouble() * 50 - 25;
                     break;
-                case 2: // сверху
+                case 2:
                     startX = targetX + random.nextDouble() * 50 - 25;
                     startY = -size;
                     break;
-                default: // снизу
+                default:
                     startX = targetX + random.nextDouble() * 50 - 25;
                     startY = canvas.getHeight() + size;
             }
@@ -1128,7 +1197,6 @@ public class ClientApp extends Application {
             DoubleProperty opacity = new SimpleDoubleProperty(0.0);
             DoubleProperty angle = new SimpleDoubleProperty(vehicle.getRotationAngle() != null ? vehicle.getRotationAngle() : random.nextDouble() * 360);
 
-            // Для эффекта шлейфа
             List<Point> trailPositions = new ArrayList<>();
             List<Double> trailAngles = new ArrayList<>();
 
@@ -1152,7 +1220,6 @@ public class ClientApp extends Application {
             );
 
             animation.currentTimeProperty().addListener((obs, oldVal, newVal) -> {
-                // Сохраняем позиции и углы для шлейфа
                 if (newVal.toMillis() % 10 == 0) {
                     trailPositions.add(new Point(x.get(), y.get()));
                     trailAngles.add(angle.get());
@@ -1162,22 +1229,19 @@ public class ClientApp extends Application {
                     }
                 }
 
-                // Очистка холста
                 gc.setFill(Color.web("#2d2f4a"));
                 gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-                // Отрисовка статичных объектов
                 for (Vehicle v : vehicles) {
                     if (displayedVehicleIds.contains(v.getId())) {
                         drawStaticVehicle(gc, v, offsetX, offsetY);
                     }
                 }
 
-                // Отрисовка шлейфа
                 for (int j = 0; j < trailPositions.size(); j++) {
                     Point p = trailPositions.get(j);
-                    double trailOpacity = 0.2 * (j / (double)trailPositions.size());
-                    double trailSize = size * (0.3 + 0.7 * (j / (double)trailPositions.size()));
+                    double trailOpacity = 0.2 * (j / (double) trailPositions.size());
+                    double trailSize = size * (0.3 + 0.7 * (j / (double) trailPositions.size()));
 
                     gc.save();
                     gc.translate(p.x, p.y);
@@ -1189,7 +1253,6 @@ public class ClientApp extends Application {
                     gc.restore();
                 }
 
-                // Отрисовка анимируемых объектов
                 for (VehicleAnimation anim : vehicleAnimations.values()) {
                     drawAnimatedVehicle(gc, anim);
                 }
@@ -1197,7 +1260,7 @@ public class ClientApp extends Application {
 
             animation.setOnFinished(e -> {
                 displayedVehicleIds.add(vehicle.getId());
-                vehicle.setRotationAngle(angle.get()); // Сохраняем угол после анимации
+                vehicle.setRotationAngle(angle.get());
                 vehicleAnimations.remove(vehicle.getId());
                 Platform.runLater(this::updateCanvas);
             });
@@ -1216,7 +1279,7 @@ public class ClientApp extends Application {
         double y = vehicle.getCoordinates().getY() + offsetY;
         Color color = getUserColor(vehicle.getOwner());
         double size = vehicle.getPower() / 50.0 + 10;
-        double angle = vehicle.getRotationAngle() != null ? vehicle.getRotationAngle() : 0; // Используем сохранённый угол
+        double angle = vehicle.getRotationAngle() != null ? vehicle.getRotationAngle() : 0;
 
         gc.save();
         gc.translate(x, y);
@@ -1249,6 +1312,7 @@ public class ClientApp extends Application {
 
     private static class Point {
         double x, y;
+
         public Point(double x, double y) {
             this.x = x;
             this.y = y;
@@ -1302,8 +1366,8 @@ public class ClientApp extends Application {
     }
 
     private Vehicle findVehicleAt(GraphicsContext gc, double clickX, double clickY) {
-        double offsetX = 10; // Отступ для соответствия с отрисовкой
-        double offsetY = 10; // Отступ для соответствия с отрисовкой
+        double offsetX = 10;
+        double offsetY = 10;
 
         for (Vehicle vehicle : vehicles) {
             double x = vehicle.getCoordinates().getX() + offsetX;
@@ -1327,13 +1391,12 @@ public class ClientApp extends Application {
         return userColors.get(username);
     }
 
-
     private void handleCanvasClick(MouseEvent event) {
         Vehicle selected = findVehicleAt(canvas.getGraphicsContext2D(), event.getX(), event.getY());
         if (selected != null) {
             Dialog<String> dialog = new Dialog<>();
-            dialog.setTitle("Информация об объекте");
-            dialog.setHeaderText("Детали транспортного средства");
+            dialog.setTitle(messages.getString("dialog.vehicle.title"));
+            dialog.setHeaderText(messages.getString("dialog.vehicle.header"));
 
             ButtonType okButtonType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(okButtonType);
@@ -1341,22 +1404,24 @@ public class ClientApp extends Application {
             GridPane grid = new GridPane();
             grid.setHgap(10);
             grid.setVgap(10);
-            grid.setPadding(new Insets(20, 150, 10, 10));
+            grid.setPadding(new Insets(20, 40, 10, 40));
 
-            grid.add(new Label("ID:"), 0, 0);
+            grid.add(new Label(messages.getString("id") + ":"), 0, 0);
             grid.add(new Label(String.valueOf(selected.getId())), 1, 0);
-            grid.add(new Label("Название:"), 0, 1);
+            grid.add(new Label(messages.getString("name") + ":"), 0, 1);
             grid.add(new Label(selected.getName()), 1, 1);
-            grid.add(new Label("X:"), 0, 2);
-            grid.add(new Label(String.valueOf(selected.getCoordinates().getX())), 1, 2);
-            grid.add(new Label("Y:"), 0, 3);
+            grid.add(new Label(messages.getString("x") + ":"), 0, 2);
+            grid.add(new Label(numberFormat.format(selected.getCoordinates().getX())), 1, 2);
+            grid.add(new Label(messages.getString("y") + ":"), 0, 3);
             grid.add(new Label(String.valueOf(selected.getCoordinates().getY())), 1, 3);
-            grid.add(new Label("Мощность:"), 0, 4);
-            grid.add(new Label(String.valueOf(selected.getPower())), 1, 4);
-            grid.add(new Label("Тип:"), 0, 5);
+            grid.add(new Label(messages.getString("power") + ":"), 0, 4);
+            grid.add(new Label(numberFormat.format(selected.getPower())), 1, 4);
+            grid.add(new Label(messages.getString("type") + ":"), 0, 5);
             grid.add(new Label(selected.getType().toString()), 1, 5);
-            grid.add(new Label("Тип топлива:"), 0, 6);
+            grid.add(new Label(messages.getString("fuel") + ":"), 0, 6);
             grid.add(new Label(selected.getFuelType().toString()), 1, 6);
+            grid.add(new Label(messages.getString("creationDate") + ":"), 0, 7);
+            grid.add(new Label(selected.getCreationDate().format(dateTimeFormatter)), 1, 7);
 
             dialog.getDialogPane().setContent(grid);
             dialog.showAndWait();
